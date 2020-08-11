@@ -1,18 +1,48 @@
-#include <cmath>
-#include <cstdlib>
-#include <iostream>
-#include <GL/glut.h>
+/*
+  CSX75 Tutorial 3
 
-int win_width = 512;
-int win_height = 512;
-int xx0, yy0;
-int xx1, yy1;
-int numpoints=0;
-int linetype = 0;
+  A program which opens a window and draws the "color cube."
+
+  Use the arrow keys and PgUp,PgDn,
+  keys to make the cube move.
+
+  Modified from An Introduction to OpenGL Programming, 
+  Ed Angel and Dave Shreiner, SIGGRAPH 2013
+
+  Written by Parag Chaudhuri, 2015
+*/
+
+
+#include "bresenham.hpp"
+
+GLuint shaderProgram;
+GLuint vbo, vao;
+
+glm::mat4 rotation_matrix;
+glm::mat4 ortho_matrix;
+glm::mat4 modelview_matrix;
+GLuint uModelViewMatrix;
+
+//-----------------------------------------------------------------
+
+
+glm::vec4 startPt,endPt,deltaPos;
+
+
+std::vector<glm::vec4> vectorOfPoints,vectorOfColors;
+
+int winSizeX=512,winSizeY=512;
+
+std::size_t sizeInBytes(std::vector<glm::vec4> arbitraryVector){ //can and should be overloaded
+  return arbitraryVector.size() * sizeof(arbitraryVector[0]) ;
+}
+
 
 //Basic Bresenham line drawing(works only in first octant)
 void line1 (int x0, int y0, int x1, int y1)
 {
+  vectorOfPoints.clear();
+  vectorOfColors.clear();
   int deltax = x1 - x0;
   int deltay = y1 - y0;
   
@@ -22,21 +52,23 @@ void line1 (int x0, int y0, int x1, int y1)
 
   int y = y0;
   int newy = y0;
-  glPointSize(1.0);     
-  glColor3f(0.0, 0.0, 1.0);
-  glBegin(GL_POINTS);
-  for (int x = x0; x < x1; x++)
-    {
+  //glPointSize(1.0);     
+  //glColor3f(0.0, 0.0, 1.0);
+  //glBegin(GL_POINTS);
+  for (int x = x0; x < x1; x++){
+
       error = error + deltaerr;
-      glVertex2f(x, y);
+
+      //glVertex2f(x, y);
+      vectorOfPoints.push_back( glm::vec4(2*float(y)/winSizeX - 1 , 1 - 2*float(x)/winSizeY ,0,1) );
+      vectorOfColors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
 
       if (error > 0.5) 
-	{
-	  y = y + 1;
-	  error = error - 1.0;
-	}
+      {
+        y = y + 1;
+        error = error - 1.0;
+      }
     }
-  glEnd();
 }
 
 void swap (int &x, int &y)
@@ -48,6 +80,8 @@ void swap (int &x, int &y)
 //Generalized Bresenham (works for all lines)
 void line2 (int x0, int y0, int x1, int y1)
 {
+  vectorOfPoints.clear();
+  vectorOfColors.clear();
   bool steep = abs(y1 - y0) > abs(x1 - x0);
   if (steep)
     {
@@ -70,150 +104,202 @@ void line2 (int x0, int y0, int x1, int y1)
 
   if (y0 < y1) ystep = 1; else ystep = -1;
 
-  glPointSize(1.0);     
-  glColor3f(1.0, 0.0, 0.0);
 
-  glBegin(GL_POINTS);
+
+  //glBegin(GL_POINTS);
   for (int x=x0; x < x1; x++)
     {
-      if (steep)
-	  glVertex2f(y, x); 
-      else 
-	  glVertex2f(x, y);
+      if (steep){
+        vectorOfPoints.push_back( glm::vec4(2*float(y)/winSizeX - 1 , 1 - 2*float(x)/winSizeY ,0,1) );
+        vectorOfColors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
+      }
+      else{
+        vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+        vectorOfColors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
+      } 
+    
 
       error = error + deltaerr;
       if (error >= 0.5) 
-	{
-	  y = y + ystep;
-	  error = error - 1.0;
-	}
-    }
-  glEnd();
-}
-
-
-void display( void )
-{
-  glClear( GL_COLOR_BUFFER_BIT );
-
-  if ((numpoints % 2 )== 1)
-    {
-      glPointSize(4.0);
-      
-      glBegin(GL_POINTS);
-       glColor3f(0.0, 1.0, 0.0);
-       glVertex2f(xx0, yy0);
-      glEnd();
-    }
-  else if ((numpoints % 2) == 0)
-    {
-      glPointSize(4.0);  
-      glBegin(GL_POINTS);
-       glColor3f(0.0, 1.0, 0.0);
-       glVertex2f(xx0, yy0);
-       glVertex2f(xx1, yy1);
-      glEnd();
-
-      //Use GL to draw the line
-      //Drawn in white
-      /*
-      if (linetype != 3)
-	{
-	  glPointSize(1.0);  
-	  glBegin(GL_LINES);
-	  glColor3f(1.0, 1.0, 1.0);
-	  glVertex2f(xx0, yy0);
-	  glVertex2f(xx1, yy1);
-	  glEnd();
-	}
-      */
-      //Also draw using basic Bresenham (works only in first octant)
-      //Drawn in Blue
-      if (linetype == 1)
-	line1(xx0, yy0, xx1, yy1);
-      //Also draw using generalized Bresenham (works for all lines)
-      //Drawn in red
-      else if (linetype >= 2) 
-	line2(xx0, yy0, xx1, yy1);
-    }
- 
-  glutSwapBuffers();
-}
-
-void reshape( int w, int h )
-{
-  if  ( h == 0 ) h = 1;
-
-  glMatrixMode( GL_PROJECTION );
-  glLoadIdentity();
-
-  glOrtho( 0.0, (GLdouble)w, 0.0, (GLdouble)h, -1., 1. );
-  glViewport( 0, 0, w, h );
-
-  win_width = w;
-  win_height = h;
-
-  glutPostRedisplay();
-}
-
-void keyboard( unsigned char key, int x, int y ) {
-  switch(key) {
-  case 27: 
-    exit(0);
-    break;
-  case '1':
-    linetype=1;
-    break;
-  case '2':
-    linetype=2;
-    break;
-  case '3':
-    linetype=3;
-    break;
-  default:
-    linetype=0;
-    break;
+  {
+    y = y + ystep;
+    error = error - 1.0;
   }
+    }
+  //glEnd();
 }
 
-void mouse(int button, int state, int x, int y) 
+
+
+
+
+void initBuffersGL_1(void)
 {
-   if (state == GLUT_DOWN) 
-     {
-       if (button == GLUT_LEFT_BUTTON) 
-	 {
-	   if ((numpoints % 2 )== 0)
-	     {
-	       numpoints = 0;
-	       xx0 = x;
-	       yy0 = win_height - y;
-	       numpoints++;
-	     }
-	   else if ((numpoints % 2) == 1)
-	     {
-	       xx1 = x;
-	       yy1 =  win_height - y;
-	       numpoints++;
-	     }
-	 }
-     }
-   glutPostRedisplay();
-}       
+  line1(-1,-1,0,0);
 
+  //Ask GL for a Vertex Attribute Object (vao)
+  glGenVertexArrays (1, &vao);
+  //Set it as the current array to be used by binding it
+  glBindVertexArray (vao);
 
-int main (int argc, char *argv[]) 
-{
+  //Ask GL for a Vertex Buffer Object (vbo)
+  glGenBuffers (1, &vbo);
+  //Set it as the current buffer to be used by binding it
+  glBindBuffer (GL_ARRAY_BUFFER, vbo);
+  //Copy the points into the current buffer
+  glBufferData (GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints) + sizeInBytes(vectorOfColors), NULL, GL_DYNAMIC_DRAW);
+  glBufferSubData( GL_ARRAY_BUFFER, 0, sizeInBytes(vectorOfPoints), &vectorOfPoints[0][0] );
+  glBufferSubData( GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints), sizeInBytes(vectorOfColors), &vectorOfColors[0][0] );
 
-  glutInit( &argc, argv );
-  glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE );
-  glutInitWindowSize( win_width, win_height );
+  // Load shaders and use the resulting shader program
+  std::string vertex_shader_file("03_vshader.glsl");
+  std::string fragment_shader_file("03_fshader.glsl");
 
-  glutCreateWindow( "Bresenham's Line Drawing" );
+  std::vector<GLuint> shaderList;
+  shaderList.push_back(csX75::LoadShaderGL(GL_VERTEX_SHADER, vertex_shader_file));
+  shaderList.push_back(csX75::LoadShaderGL(GL_FRAGMENT_SHADER, fragment_shader_file));
 
-  glutDisplayFunc( display );
-  glutReshapeFunc( reshape );
-  glutKeyboardFunc( keyboard );
-  glutMouseFunc( mouse );
- 
-  glutMainLoop();
+  shaderProgram = csX75::CreateProgramGL(shaderList);
+  glUseProgram( shaderProgram );
+
+  // set up vertex arrays
+  GLuint vPosition = glGetAttribLocation( shaderProgram, "vPosition" );
+  glEnableVertexAttribArray( vPosition );
+  glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0) );
+  
+  GLuint vColor = glGetAttribLocation( shaderProgram, "vColor" ); 
+  glEnableVertexAttribArray( vColor );
+  glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOfPoints)) );
+
+  glPointSize(4);
+  //uModelViewMatrix = glGetUniformLocation( shaderProgram, "uModelViewMatrix");
 }
+
+void reloadBuffers(void)
+{
+
+  //Copy the points into the current buffer
+  glBufferData (GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints) + sizeInBytes(vectorOfColors), NULL, GL_DYNAMIC_DRAW);
+  glBufferSubData( GL_ARRAY_BUFFER, 0, sizeInBytes(vectorOfPoints), &vectorOfPoints[0][0] );
+  glBufferSubData( GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints), sizeInBytes(vectorOfColors), &vectorOfColors[0][0] );
+
+
+  // set up vertex arrays
+  GLuint vPosition = glGetAttribLocation( shaderProgram, "vPosition" );
+  glEnableVertexAttribArray( vPosition );
+  glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0) );
+  
+  GLuint vColor = glGetAttribLocation( shaderProgram, "vColor" ); 
+  glEnableVertexAttribArray( vColor );
+  glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOfPoints)) );
+
+  glPointSize(4);
+  //uModelViewMatrix = glGetUniformLocation( shaderProgram, "uModelViewMatrix");
+}
+
+
+void renderGL_1(void)
+{
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  // Draw
+  glDrawArrays(GL_POINTS,0,vectorOfPoints.size()) ;
+  
+}
+
+
+
+
+int main(int argc, char** argv)
+{
+  //! The pointer to the GLFW window
+  GLFWwindow* window;
+  //GLFWwindow* window2;
+
+  //! Setting up the GLFW Error callback
+  glfwSetErrorCallback(csX75::error_callback);
+
+  //! Initialize GLFW
+  if (!glfwInit())
+    return -1;
+
+  //We want OpenGL 4.0
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4); 
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+  //This is for MacOSX - can be omitted otherwise
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); 
+  //We don't want the old OpenGL 
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); 
+
+  //! Create a windowed mode window and its OpenGL context
+  window = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: Bresenham's Line Algorithm", NULL, NULL);
+  if (!window)
+    {
+      glfwTerminate();
+      return -1;
+    }
+/*  window2 = glfwCreateWindow(512, 512, "CS475/CS675 Demo: OpenGL Line Algorithm", NULL, NULL);
+  if (!window2)
+    {
+      glfwTerminate();
+      return -1;
+    }*/
+  //! Make the window's context current 
+  glfwMakeContextCurrent(window);
+
+  //Initialize GLEW
+  //Turn this on to get Shader based OpenGL
+  glewExperimental = GL_TRUE;
+  GLenum err = glewInit();
+  if (GLEW_OK != err)
+    {
+      //Problem: glewInit failed, something is seriously wrong.
+      std::cerr<<"GLEW Init Failed : %s"<<std::endl;
+    }
+
+  //Print and see what context got enabled
+  std::cout<<"Vendor: "<<glGetString (GL_VENDOR)<<std::endl;
+  std::cout<<"Renderer: "<<glGetString (GL_RENDERER)<<std::endl;
+  std::cout<<"Version: "<<glGetString (GL_VERSION)<<std::endl;
+  std::cout<<"GLSL Version: "<<glGetString (GL_SHADING_LANGUAGE_VERSION)<<std::endl;
+
+  //Keyboard Callback
+  glfwSetKeyCallback(window, csX75::key_callback);
+  glfwSetMouseButtonCallback(window, csX75::mouse_button_callback);
+  //glfwSetKeyCallback(window2, csX75::key_callback);
+
+  //Framebuffer resize callback
+  glfwSetFramebufferSizeCallback(window, csX75::framebuffer_size_callback);
+  //glfwSetFramebufferSizeCallback(window2, csX75::framebuffer_size_callback);
+
+  // Ensure we can capture the escape key being pressed below
+  glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+  //glfwSetInputMode(window2, GLFW_STICKY_KEYS, GL_TRUE);
+
+  //Initialize GL state
+  csX75::initGL();
+  initBuffersGL_1();
+  //initBuffersGL();
+
+
+  // Loop until the user closes the window
+  while (glfwWindowShouldClose(window) == 0 )// && glfwWindowShouldClose(window2) == 0)
+    {
+      // Render here
+      //renderGL();
+      renderGL_1();
+
+      // Swap front and back buffers
+      glfwSwapBuffers(window);
+
+
+      // Poll for and process events
+      glfwPollEvents();
+    }
+  
+  glfwTerminate();
+  return 0;
+}
+
+//-------------------------------------------------------------------------
+
