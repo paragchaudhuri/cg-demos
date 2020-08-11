@@ -1,10 +1,10 @@
-# Tutorial 3 - Rotating a Colorcube
+# Demo Bresenham Line Drawing Algorithm
 
 <br>
 <br>
 
 ## About
-
+ TODO
 This code is mostly same as the code of *01_triangle.cpp* (Tutorial_01). So you might see quite a lot similarities.
 In this tutorial we draw a cube with OpenGL. When you untar the downloaded tgz file, you will find a cpp and a hpp file **03_colorcube.cpp** and **03_colorcube.hpp** and a file named **Makefile**. You will also find two shader files, **03_fshader.glsl** and **03_vshader.glsl**.
 
@@ -12,7 +12,7 @@ In this tutorial we draw a cube with OpenGL. When you untar the downloaded tgz f
 <br>
 
 ## Running the code
-
+TODO
 Same as Tutorial_01, compilation of the code can be done using `make`.
 If you have a driver supporting OpenGL 4.1 then running `03_colorcube` will do the trick for you. But if your system supports OpenGL 3.2+. Then in order to run the code the following changes need to be made in the **03_colorcube.cpp**. In the line number 154 and 155,
 
