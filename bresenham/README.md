@@ -1,4 +1,4 @@
-# Demo Bresenham Line Drawing Algorithm
+# Demo: Bresenham Line Drawing Algorithm
 
 <br>
 <br>

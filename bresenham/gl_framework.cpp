@@ -1,12 +1,20 @@
 #include "gl_framework.hpp"
 
+#define WIN_BRESENHAM 1
+#define WIN_OPENGL 2
+//TODO move ^ #defines to a more suitable place
+
 extern GLfloat xrot,yrot,zrot;
 extern double cursorXpos, cursorYpos;
 
 extern void line1 (int x0, int y0, int x1, int y1);
 extern void line2 (int x0, int y0, int x1, int y1);
-extern void reloadBuffers(void);
+extern void pointsForGL(int x0, int y0, int x1, int y1);
+extern void reloadBuffers(int context);
 
+
+extern GLFWwindow* window1;
+extern GLFWwindow*  window2;
 namespace csX75
 {
   //! Initialize GL State
@@ -58,12 +66,12 @@ namespace csX75
   bool numClicks =0;
   int x0,y0;
 
-  void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+  void mouse_button_callback(GLFWwindow* currWindow, int button, int action, int mods)
   {
       if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
         // double cursorXpos, cursorYpos;
         numClicks = (numClicks+1)%2;
-        glfwGetCursorPos(window, &cursorXpos, &cursorYpos);
+        glfwGetCursorPos(currWindow, &cursorXpos, &cursorYpos);
         if(numClicks){
           std::cerr<<"Odd  "<<cursorXpos<<" , "<<cursorYpos<<std::endl;
           x0 = cursorXpos;
@@ -74,8 +82,14 @@ namespace csX75
         else{
           std::cerr<<"Even "<<cursorXpos<<" , "<<cursorYpos<<std::endl;
           line2(x0,y0,cursorXpos,cursorYpos);
+          pointsForGL(x0,y0, cursorXpos,cursorYpos);
           // line2(x0,y0,cursorYpos,cursorXpos);
-          reloadBuffers();
+          glfwMakeContextCurrent(window1);
+          reloadBuffers(WIN_BRESENHAM);
+          glfwMakeContextCurrent(window2);
+          
+          reloadBuffers(WIN_OPENGL);
+          glfwMakeContextCurrent(currWindow);
         }
       }
           

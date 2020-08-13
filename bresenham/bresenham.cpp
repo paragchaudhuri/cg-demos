@@ -16,12 +16,13 @@
 #include "bresenham.hpp"
 
 GLuint shaderProgram;
-GLuint vbo, vao;
+GLuint vbo[1], vao[1];
 
 glm::mat4 rotation_matrix;
 glm::mat4 ortho_matrix;
 glm::mat4 modelview_matrix;
 GLuint uModelViewMatrix;
+
 
 //-----------------------------------------------------------------
 
@@ -29,7 +30,11 @@ GLuint uModelViewMatrix;
 glm::vec4 startPt,endPt,deltaPos;
 
 
-std::vector<glm::vec4> vectorOfPoints,vectorOfColors;
+std::vector<glm::vec4> vectorOfPoints,vectorOfColors,vectorOf2Points,vectorOf2Colors;
+//Note that the vectors of known lengths are vectors just for consistency
+
+//glm::vec4 twoPoints[2],twoColors[2];
+
 
 int winSizeX=512,winSizeY=512;
 
@@ -37,7 +42,10 @@ std::size_t sizeInBytes(std::vector<glm::vec4> arbitraryVector){ //can and shoul
   return arbitraryVector.size() * sizeof(arbitraryVector[0]) ;
 }
 
-
+/*std::size_t sizeInBytes(std::vector<glm::vec4> arbitraryArray){ //can and should be overloaded
+  return arbitraryVector.size() * sizeof(arbitraryVector[0]) ;
+}
+*/
 //Basic Bresenham line drawing(works only in first octant)
 void line1 (int x0, int y0, int x1, int y1)
 {
@@ -130,27 +138,58 @@ void line2 (int x0, int y0, int x1, int y1)
 }
 
 
+void pointsForGL(int x0, int y0, int x1, int y1){
+      vectorOf2Points.clear();
+      vectorOf2Colors.clear();
+      int x = x0;
+      int y = y0;
+      vectorOf2Points.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+      vectorOf2Colors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
+      x=x1; y=y1;
+      vectorOf2Points.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+      vectorOf2Colors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
+}
 
-
-
-void initBuffersGL_1(void)
+void renderGL(void)
 {
-  line1(-1,-1,0,0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // Draw
+  glDrawArrays(GL_POINTS,0,vectorOfPoints.size()) ;
+}
+
+
+
+
+
+void initBuffersGL(int context)
+{
+  assert(context == WIN_BRESENHAM || context == WIN_OPENGL);
+  if( context == WIN_BRESENHAM )
+    line1(-1,-1,0,0);
+  if( context == WIN_OPENGL )
+    pointsForGL(-1,-1,0,0);
 
   //Ask GL for a Vertex Attribute Object (vao)
-  glGenVertexArrays (1, &vao);
+  glGenVertexArrays (1, &vao[0]);
   //Set it as the current array to be used by binding it
-  glBindVertexArray (vao);
+  glBindVertexArray (vao[0]);
 
   //Ask GL for a Vertex Buffer Object (vbo)
-  glGenBuffers (1, &vbo);
+  glGenBuffers (1, &vbo[0]);
   //Set it as the current buffer to be used by binding it
-  glBindBuffer (GL_ARRAY_BUFFER, vbo);
+  glBindBuffer (GL_ARRAY_BUFFER, vbo[0]);
   //Copy the points into the current buffer
+  if( context == WIN_BRESENHAM ){
   glBufferData (GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints) + sizeInBytes(vectorOfColors), NULL, GL_DYNAMIC_DRAW);
   glBufferSubData( GL_ARRAY_BUFFER, 0, sizeInBytes(vectorOfPoints), &vectorOfPoints[0][0] );
   glBufferSubData( GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints), sizeInBytes(vectorOfColors), &vectorOfColors[0][0] );
+  }
 
+  if( context == WIN_OPENGL ){
+  glBufferData (GL_ARRAY_BUFFER, sizeInBytes(vectorOf2Points) + sizeInBytes(vectorOf2Colors), NULL, GL_DYNAMIC_DRAW);
+  glBufferSubData( GL_ARRAY_BUFFER, 0, sizeInBytes(vectorOf2Points), &vectorOf2Points[0][0] );
+  glBufferSubData( GL_ARRAY_BUFFER, sizeInBytes(vectorOf2Points), sizeInBytes(vectorOf2Colors), &vectorOf2Colors[0][0] );
+  }
   // Load shaders and use the resulting shader program
   std::string vertex_shader_file("03_vshader.glsl");
   std::string fragment_shader_file("03_fshader.glsl");
@@ -169,15 +208,20 @@ void initBuffersGL_1(void)
   
   GLuint vColor = glGetAttribLocation( shaderProgram, "vColor" ); 
   glEnableVertexAttribArray( vColor );
-  glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOfPoints)) );
+  if( context == WIN_BRESENHAM )
+    glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOfPoints)) );
+  if( context == WIN_OPENGL )
+    glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOf2Points)) );
 
-  glPointSize(4);
+  glPointSize(2);
   //uModelViewMatrix = glGetUniformLocation( shaderProgram, "uModelViewMatrix");
 }
 
-void reloadBuffers(void)
+
+void reloadBuffers(int context)
 {
 
+  if(context==WIN_BRESENHAM){
   //Copy the points into the current buffer
   glBufferData (GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints) + sizeInBytes(vectorOfColors), NULL, GL_DYNAMIC_DRAW);
   glBufferSubData( GL_ARRAY_BUFFER, 0, sizeInBytes(vectorOfPoints), &vectorOfPoints[0][0] );
@@ -193,28 +237,54 @@ void reloadBuffers(void)
   glEnableVertexAttribArray( vColor );
   glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOfPoints)) );
 
-  glPointSize(4);
   //uModelViewMatrix = glGetUniformLocation( shaderProgram, "uModelViewMatrix");
+  }
+
+  if(context==WIN_OPENGL){
+  //Copy the points into the current buffer
+  glBufferData (GL_ARRAY_BUFFER, sizeInBytes(vectorOf2Points) + sizeInBytes(vectorOf2Colors), NULL, GL_DYNAMIC_DRAW);
+  glBufferSubData( GL_ARRAY_BUFFER, 0, sizeInBytes(vectorOf2Points), &vectorOf2Points[0][0] );
+  glBufferSubData( GL_ARRAY_BUFFER, sizeInBytes(vectorOf2Points), sizeInBytes(vectorOf2Colors), &vectorOf2Colors[0][0] );
+
+
+  // set up vertex arrays
+  GLuint vPosition = glGetAttribLocation( shaderProgram, "vPosition" );
+  glEnableVertexAttribArray( vPosition );
+  glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0) );
+  
+  GLuint vColor = glGetAttribLocation( shaderProgram, "vColor" ); 
+  glEnableVertexAttribArray( vColor );
+  glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOf2Points)) );
+
+  //uModelViewMatrix = glGetUniformLocation( shaderProgram, "uModelViewMatrix");
+  }
+  glPointSize(2);
 }
 
 
 void renderGL_1(void)
 {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
   // Draw
-  glDrawArrays(GL_POINTS,0,vectorOfPoints.size()) ;
-  
+  glDrawArrays(GL_POINTS,0,vectorOfPoints.size()) ;  
 }
 
+void renderGL(int context)
+{
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // Draw
+  if(context == WIN_BRESENHAM)
+    glDrawArrays(GL_POINTS,0,vectorOfPoints.size()) ; 
+  if(context == WIN_OPENGL)
+    glDrawArrays(GL_LINES,0,vectorOf2Points.size()) ;  
+}
 
 
 
 int main(int argc, char** argv)
 {
   //! The pointer to the GLFW window
-  GLFWwindow* window;
-  //GLFWwindow* window2;
+
 
   //! Setting up the GLFW Error callback
   glfwSetErrorCallback(csX75::error_callback);
@@ -231,21 +301,30 @@ int main(int argc, char** argv)
   //We don't want the old OpenGL 
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); 
 
+
   //! Create a windowed mode window and its OpenGL context
-  window = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: Bresenham's Line Algorithm", NULL, NULL);
-  if (!window)
+  window1 = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: Bresenham's Line Algorithm", NULL, NULL);
+  if (!window1)
     {
       glfwTerminate();
       return -1;
     }
-/*  window2 = glfwCreateWindow(512, 512, "CS475/CS675 Demo: OpenGL Line Algorithm", NULL, NULL);
+
+  //window2 = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: OpenGL Line", NULL, window);
+  window2 = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: OpenGL Line", NULL, NULL);
   if (!window2)
     {
       glfwTerminate();
       return -1;
-    }*/
+    }
+
+  int winXpos, winYpos;
+  glfwGetWindowPos(window1, &winXpos, &winYpos);
+
+  glfwSetWindowPos(window2, winXpos + winSizeX + 4, winYpos);
+
   //! Make the window's context current 
-  glfwMakeContextCurrent(window);
+  glfwMakeContextCurrent(window1);
 
   //Initialize GLEW
   //Turn this on to get Shader based OpenGL
@@ -264,34 +343,43 @@ int main(int argc, char** argv)
   std::cout<<"GLSL Version: "<<glGetString (GL_SHADING_LANGUAGE_VERSION)<<std::endl;
 
   //Keyboard Callback
-  glfwSetKeyCallback(window, csX75::key_callback);
-  glfwSetMouseButtonCallback(window, csX75::mouse_button_callback);
-  //glfwSetKeyCallback(window2, csX75::key_callback);
+  glfwSetKeyCallback(window1, csX75::key_callback);
+  glfwSetKeyCallback(window2, csX75::key_callback);
+
+  glfwSetMouseButtonCallback(window1, csX75::mouse_button_callback);
+  //glfwSetMouseButtonCallback(window2, csX75::mouse_button_callback);
 
   //Framebuffer resize callback
-  glfwSetFramebufferSizeCallback(window, csX75::framebuffer_size_callback);
-  //glfwSetFramebufferSizeCallback(window2, csX75::framebuffer_size_callback);
+  glfwSetFramebufferSizeCallback(window1, csX75::framebuffer_size_callback);
+  glfwSetFramebufferSizeCallback(window2, csX75::framebuffer_size_callback);
 
   // Ensure we can capture the escape key being pressed below
-  glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-  //glfwSetInputMode(window2, GLFW_STICKY_KEYS, GL_TRUE);
+  glfwSetInputMode(window1, GLFW_STICKY_KEYS, GL_TRUE);
+  glfwSetInputMode(window2, GLFW_STICKY_KEYS, GL_TRUE);
 
   //Initialize GL state
   csX75::initGL();
-  initBuffersGL_1();
+  initBuffersGL(WIN_BRESENHAM);
   //initBuffersGL();
 
+  glfwMakeContextCurrent(window2);
+  csX75::initGL();
+  initBuffersGL(WIN_OPENGL);
 
   // Loop until the user closes the window
-  while (glfwWindowShouldClose(window) == 0 )// && glfwWindowShouldClose(window2) == 0)
+  while (glfwWindowShouldClose(window1) == 0  && glfwWindowShouldClose(window2) == 0)
     {
       // Render here
-      //renderGL();
-      renderGL_1();
+      
+      glfwMakeContextCurrent(window1);
+      renderGL(WIN_BRESENHAM);
 
       // Swap front and back buffers
-      glfwSwapBuffers(window);
-
+      glfwSwapBuffers(window1);
+      
+      glfwMakeContextCurrent(window2);
+      renderGL(WIN_OPENGL);
+      glfwSwapBuffers(window2);
 
       // Poll for and process events
       glfwPollEvents();
