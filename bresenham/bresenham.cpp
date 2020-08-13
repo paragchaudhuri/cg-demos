@@ -1,15 +1,18 @@
 /*
-  CSX75 Tutorial 3
+CSX75 Demo:
+  A program which opens 2 windows and draws a "line"
+  Modified from:
+  {
+    CSX75 Tutorial 3
 
-  A program which opens a window and draws the "color cube."
+    A program which opens 1 windows and draws a "color cube."
 
-  Use the arrow keys and PgUp,PgDn,
-  keys to make the cube move.
+    Modified from An Introduction to OpenGL Programming, 
+    Ed Angel and Dave Shreiner, SIGGRAPH 2013
 
-  Modified from An Introduction to OpenGL Programming, 
-  Ed Angel and Dave Shreiner, SIGGRAPH 2013
-
-  Written by Parag Chaudhuri, 2015
+    Written by Parag Chaudhuri, 2015
+  }
+  2020
 */
 
 
@@ -46,8 +49,103 @@ std::size_t sizeInBytes(std::vector<glm::vec4> arbitraryVector){ //can and shoul
   return arbitraryVector.size() * sizeof(arbitraryVector[0]) ;
 }
 */
+
+//Integer Optimized Bresenham line drawing(works only in first octant)
+void line1_I (int x0, int y0, int x1, int y1)
+{
+  vectorOfPoints.clear();
+  vectorOfColors.clear();
+  int deltax = x1 - x0;
+  int deltay = y1 - y0;
+
+  int d = 2*deltay- deltax;
+
+
+  int y = y0;
+
+  for (int x = x0; x < x1; x++){
+
+
+    if(d<0){
+      d += 2*deltay;
+    }
+    else{
+      d += 2*deltay - 2*deltax;
+      y++;
+    }
+      //The following part has float values for OpenGL but floats are not used in the bresenham component! 
+      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+      vectorOfColors.push_back(glm::vec4(1.0, float(y-y0)/deltay, float(y-y0)/deltay, 1.0) );
+
+    }
+}
+
+void swap (int &x, int &y)
+{
+  int temp = x;
+  x = y; y = temp;
+}
+
+
+void line8_I (int x0, int y0, int x1, int y1)
+{
+  vectorOfPoints.clear();
+  vectorOfColors.clear();
+
+  bool steep = abs(y1-y0) > abs(x1 - x0);
+
+  int mult=1;
+
+  if(steep){
+    swap(x0,y0);
+    swap(x1,y1);
+  }
+
+  if(x0>x1){
+    swap(x0,x1);
+    swap(y0,y1);
+  }
+
+  if(y0>y1){
+    mult =-1;
+  }
+
+  y0*=mult;
+  y1*=mult;
+
+  int deltax = x1 - x0;
+  int deltay = y1 - y0;
+
+
+  int d = 2*deltay- deltax;
+
+
+  int y = y0;
+
+  for (int x = x0; x < x1; x++){
+
+
+    if(d<0){
+      d += 2*deltay;
+    }
+    else{
+      d += 2*deltay - 2*deltax;
+      y++;
+    }
+      //The following part has float values for OpenGL but floats are not used in the bresenham component! 
+    if(steep)
+      vectorOfPoints.push_back( glm::vec4(2*float(mult*y)/winSizeX - 1 , 1 - 2*float(x)/winSizeY ,0,1) );
+    else
+      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(mult*y)/winSizeY ,0,1) );
+
+      vectorOfColors.push_back(glm::vec4(float(y-y0)/deltay, 1.0, float(y-y0)/deltay, 1.0) );
+
+    }
+}
+
+
 //Basic Bresenham line drawing(works only in first octant)
-void line1 (int x0, int y0, int x1, int y1)
+void line1_F (int x0, int y0, int x1, int y1)
 {
   vectorOfPoints.clear();
   vectorOfColors.clear();
@@ -60,9 +158,7 @@ void line1 (int x0, int y0, int x1, int y1)
 
   int y = y0;
   int newy = y0;
-  //glPointSize(1.0);     
-  //glColor3f(0.0, 0.0, 1.0);
-  //glBegin(GL_POINTS);
+
   for (int x = x0; x < x1; x++){
 
       error = error + deltaerr;
@@ -79,14 +175,10 @@ void line1 (int x0, int y0, int x1, int y1)
     }
 }
 
-void swap (int &x, int &y)
-{
-  int temp = x;
-  x = y; y = temp;
-}
+
 
 //Generalized Bresenham (works for all lines)
-void line2 (int x0, int y0, int x1, int y1)
+void line8_F (int x0, int y0, int x1, int y1)
 {
   vectorOfPoints.clear();
   vectorOfColors.clear();
@@ -165,7 +257,7 @@ void initBuffersGL(CONTEXT context)
 {
   assert(context == WIN_BRESENHAM || context == WIN_OPENGL);
   if( context == WIN_BRESENHAM )
-    line1(-1,-1,0,0);
+    line1_F(-1,-1,0,0);
   if( context == WIN_OPENGL )
     pointsForGL(-1,-1,0,0);
 
@@ -364,9 +456,12 @@ int main(int argc, char** argv)
   initBuffersGL(WIN_OPENGL);
 
   std::cout<<"------------------------------" <<std::endl;
-  std::cout<<"Starting with SINGLE_OCT mode ..." <<std::endl;
-  std::cout<<"Press 8 for ALL_OCT mode ..." <<std::endl;
-  std::cout<<"Press 1 for SINGLE_OCT mode ..." <<std::endl;
+  std::cout<<"Starting with ONE_FLOAT mode ..." <<std::endl;
+  std::cout<<"Press 1 for ONE_FLOAT mode ..." <<std::endl;
+  std::cout<<"Press 2 for ALL_FLOAT mode ..." <<std::endl;
+  std::cout<<"Press 3 for ONE_INT mode ..." <<std::endl;
+  std::cout<<"Press 4 for ALL_INT mode ..." <<std::endl;
+
 
   // Loop until the user closes the window
   while (glfwWindowShouldClose(window1) == 0  && glfwWindowShouldClose(window2) == 0)

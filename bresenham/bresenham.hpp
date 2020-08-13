@@ -36,8 +36,10 @@ bool enable_culling=true;
 //Running variable to toggle wireframe/solid modelling
 bool solid=true;
 
-void line1(int x0, int y0, int x1, int y1);
-void line2(int x0, int y0, int x1, int y1);
+void line1_F(int x0, int y0, int x1, int y1);
+void line8_F(int x0, int y0, int x1, int y1);
+void line1_I(int x0, int y0, int x1, int y1);
+void line8_I(int x0, int y0, int x1, int y1);
 void pointsForGL(int x0, int y0, int x1, int y1);
 
 void reloadBuffers(CONTEXT context);

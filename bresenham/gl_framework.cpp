@@ -4,8 +4,10 @@
 extern GLfloat xrot,yrot,zrot;
 extern double cursorXpos, cursorYpos;
 
-extern void line1 (int x0, int y0, int x1, int y1);
-extern void line2 (int x0, int y0, int x1, int y1);
+extern void line1_F (int x0, int y0, int x1, int y1);
+extern void line8_F (int x0, int y0, int x1, int y1);
+extern void line1_I (int x0, int y0, int x1, int y1);
+extern void line8_I (int x0, int y0, int x1, int y1);
 extern void pointsForGL(int x0, int y0, int x1, int y1);
 extern void reloadBuffers(CONTEXT context);
 
@@ -19,10 +21,12 @@ namespace csX75
   //cursor positions:
   int x0,y0;
 
-#define SINGLE_OCT 1
-#define ALL_OCT 8
+#define ONE_FLOAT 1
+#define ALL_FLOAT 2
+#define ONE_INT 3
+#define ALL_INT 4
   //spend only 1 byte to determine mode
-  char mode = SINGLE_OCT;
+  char mode = ONE_FLOAT;
 
   //! Initialize GL State
   void initGL(void)
@@ -57,12 +61,20 @@ namespace csX75
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
       glfwSetWindowShouldClose(window, GL_TRUE);
     else if (key == GLFW_KEY_1 && action == GLFW_PRESS){
-      mode = SINGLE_OCT;
-      std::cerr<<"SINGLE_OCT mode."<<std::endl;
+      mode = ONE_FLOAT;
+      std::cerr<<"ONE_FLOAT mode."<<std::endl;
     }
-    else if (key == GLFW_KEY_8 && action == GLFW_PRESS){
-      mode = ALL_OCT;
-      std::cerr<<"ALL_OCT mode."<<std::endl;
+    else if (key == GLFW_KEY_2 && action == GLFW_PRESS){
+      mode = ALL_FLOAT;
+      std::cerr<<"ALL_FLOAT mode."<<std::endl;
+    }
+    else if (key == GLFW_KEY_3 && action == GLFW_PRESS){
+      mode = ONE_INT;
+      std::cerr<<"ONE_INT mode."<<std::endl;
+    }
+    else if (key == GLFW_KEY_4 && action == GLFW_PRESS){
+      mode = ALL_INT;
+      std::cerr<<"ALL_INT mode."<<std::endl;
     }
   }
 
@@ -80,11 +92,15 @@ namespace csX75
         }
         else{
           //std::cerr<<"Even click: "<<cursorXpos<<" , "<<cursorYpos<<std::endl;
-          if (mode == SINGLE_OCT)
-            line1(x0,y0,cursorXpos,cursorYpos);
-          if (mode== ALL_OCT)
-            line2(x0,y0,cursorXpos,cursorYpos);
+          if (mode == ONE_FLOAT)
+            line1_F(x0,y0,cursorXpos,cursorYpos);
+          if (mode == ALL_FLOAT)
+            line8_F(x0,y0,cursorXpos,cursorYpos);
+          if (mode == ONE_INT)
+            line1_I(x0,y0,cursorXpos,cursorYpos);
           pointsForGL(x0,y0, cursorXpos,cursorYpos);
+          if (mode == ALL_INT)
+            line8_I(x0,y0,cursorXpos,cursorYpos);
           // line2(x0,y0,cursorYpos,cursorXpos);
           glfwMakeContextCurrent(window1);
           reloadBuffers(WIN_BRESENHAM);
