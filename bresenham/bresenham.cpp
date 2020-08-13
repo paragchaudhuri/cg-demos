@@ -68,8 +68,8 @@ void line1 (int x0, int y0, int x1, int y1)
       error = error + deltaerr;
 
       //glVertex2f(x, y);
-      vectorOfPoints.push_back( glm::vec4(2*float(y)/winSizeX - 1 , 1 - 2*float(x)/winSizeY ,0,1) );
-      vectorOfColors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
+      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+      vectorOfColors.push_back(glm::vec4(1.0, 0.1, 0.1, 1.0) );
 
       if (error > 0.5) 
       {
@@ -119,11 +119,11 @@ void line2 (int x0, int y0, int x1, int y1)
     {
       if (steep){
         vectorOfPoints.push_back( glm::vec4(2*float(y)/winSizeX - 1 , 1 - 2*float(x)/winSizeY ,0,1) );
-        vectorOfColors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
+        vectorOfColors.push_back(glm::vec4(0.1, 1.0, 0.1, 1.0) );
       }
       else{
         vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
-        vectorOfColors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
+        vectorOfColors.push_back(glm::vec4(0.1, 1.0, 0.1, 1.0) );
       } 
     
 
@@ -161,7 +161,7 @@ void renderGL(void)
 
 
 
-void initBuffersGL(int context)
+void initBuffersGL(CONTEXT context)
 {
   assert(context == WIN_BRESENHAM || context == WIN_OPENGL);
   if( context == WIN_BRESENHAM )
@@ -213,13 +213,14 @@ void initBuffersGL(int context)
   if( context == WIN_OPENGL )
     glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOf2Points)) );
 
-  glPointSize(2);
+  glPointSize(1);
   //uModelViewMatrix = glGetUniformLocation( shaderProgram, "uModelViewMatrix");
 }
 
 
-void reloadBuffers(int context)
+void reloadBuffers(CONTEXT context)
 {
+  assert(context == WIN_BRESENHAM || context == WIN_OPENGL);
 
   if(context==WIN_BRESENHAM){
   //Copy the points into the current buffer
@@ -258,16 +259,11 @@ void reloadBuffers(int context)
 
   //uModelViewMatrix = glGetUniformLocation( shaderProgram, "uModelViewMatrix");
   }
-  glPointSize(2);
+  glPointSize(1);
 }
 
 
-void renderGL_1(void)
-{
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  // Draw
-  glDrawArrays(GL_POINTS,0,vectorOfPoints.size()) ;  
-}
+
 
 void renderGL(int context)
 {
@@ -342,6 +338,7 @@ int main(int argc, char** argv)
   std::cout<<"Version: "<<glGetString (GL_VERSION)<<std::endl;
   std::cout<<"GLSL Version: "<<glGetString (GL_SHADING_LANGUAGE_VERSION)<<std::endl;
 
+
   //Keyboard Callback
   glfwSetKeyCallback(window1, csX75::key_callback);
   glfwSetKeyCallback(window2, csX75::key_callback);
@@ -365,6 +362,11 @@ int main(int argc, char** argv)
   glfwMakeContextCurrent(window2);
   csX75::initGL();
   initBuffersGL(WIN_OPENGL);
+
+  std::cout<<"------------------------------" <<std::endl;
+  std::cout<<"Starting with SINGLE_OCT mode ..." <<std::endl;
+  std::cout<<"Press 8 for ALL_OCT mode ..." <<std::endl;
+  std::cout<<"Press 1 for SINGLE_OCT mode ..." <<std::endl;
 
   // Loop until the user closes the window
   while (glfwWindowShouldClose(window1) == 0  && glfwWindowShouldClose(window2) == 0)

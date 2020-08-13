@@ -1,6 +1,13 @@
 #ifndef _GL_FRAMEWORK_HPP_
 #define _GL_FRAMEWORK_HPP_
 
+
+#define WIN_BRESENHAM 1
+#define WIN_OPENGL 2
+//Window specific context
+typedef char CONTEXT;
+
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 

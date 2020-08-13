@@ -23,8 +23,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-#define WIN_BRESENHAM 1
-#define WIN_OPENGL 2
+
 // Translation Parameters
 GLfloat xpos=0.0,ypos=0.0,zpos=0.0;
 // Rotation Parameters
@@ -41,7 +40,7 @@ void line1(int x0, int y0, int x1, int y1);
 void line2(int x0, int y0, int x1, int y1);
 void pointsForGL(int x0, int y0, int x1, int y1);
 
-void reloadBuffers(int context);
+void reloadBuffers(CONTEXT context);
 
 
   GLFWwindow* window1;

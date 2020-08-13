@@ -1,8 +1,5 @@
 #include "gl_framework.hpp"
 
-#define WIN_BRESENHAM 1
-#define WIN_OPENGL 2
-//TODO move ^ #defines to a more suitable place
 
 extern GLfloat xrot,yrot,zrot;
 extern double cursorXpos, cursorYpos;
@@ -10,13 +7,23 @@ extern double cursorXpos, cursorYpos;
 extern void line1 (int x0, int y0, int x1, int y1);
 extern void line2 (int x0, int y0, int x1, int y1);
 extern void pointsForGL(int x0, int y0, int x1, int y1);
-extern void reloadBuffers(int context);
+extern void reloadBuffers(CONTEXT context);
 
 
 extern GLFWwindow* window1;
 extern GLFWwindow*  window2;
 namespace csX75
 {
+
+  bool numClicks =0;
+  //cursor positions:
+  int x0,y0;
+
+#define SINGLE_OCT 1
+#define ALL_OCT 8
+  //spend only 1 byte to determine mode
+  char mode = SINGLE_OCT;
+
   //! Initialize GL State
   void initGL(void)
   {
@@ -49,39 +56,34 @@ namespace csX75
     //!Close the window if the ESC key was pressed
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
       glfwSetWindowShouldClose(window, GL_TRUE);
-    else if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
-      yrot -= 1.0;
-    else if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
-      yrot += 1.0;
-    else if (key == GLFW_KEY_UP && action == GLFW_PRESS)
-      xrot += 1.0;
-    else if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
-      xrot += 1.0;
-    else if (key == GLFW_KEY_PAGE_UP && action == GLFW_PRESS)
-      zrot += 1.0;
-    else if (key == GLFW_KEY_PAGE_DOWN && action == GLFW_PRESS)
-      zrot += 1.0;
+    else if (key == GLFW_KEY_1 && action == GLFW_PRESS){
+      mode = SINGLE_OCT;
+      std::cerr<<"SINGLE_OCT mode."<<std::endl;
+    }
+    else if (key == GLFW_KEY_8 && action == GLFW_PRESS){
+      mode = ALL_OCT;
+      std::cerr<<"ALL_OCT mode."<<std::endl;
+    }
   }
 
-  bool numClicks =0;
-  int x0,y0;
+
 
   void mouse_button_callback(GLFWwindow* currWindow, int button, int action, int mods)
   {
       if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
-        // double cursorXpos, cursorYpos;
         numClicks = (numClicks+1)%2;
         glfwGetCursorPos(currWindow, &cursorXpos, &cursorYpos);
         if(numClicks){
-          std::cerr<<"Odd  "<<cursorXpos<<" , "<<cursorYpos<<std::endl;
+          //std::cerr<<"Odd  click: "<<cursorXpos<<" , "<<cursorYpos<<std::endl;
           x0 = cursorXpos;
           y0 = cursorYpos;
-          // x0 = cursorXpos;
-          // y0 = cursorYpos;
         }
         else{
-          std::cerr<<"Even "<<cursorXpos<<" , "<<cursorYpos<<std::endl;
-          line2(x0,y0,cursorXpos,cursorYpos);
+          //std::cerr<<"Even click: "<<cursorXpos<<" , "<<cursorYpos<<std::endl;
+          if (mode == SINGLE_OCT)
+            line1(x0,y0,cursorXpos,cursorYpos);
+          if (mode== ALL_OCT)
+            line2(x0,y0,cursorXpos,cursorYpos);
           pointsForGL(x0,y0, cursorXpos,cursorYpos);
           // line2(x0,y0,cursorYpos,cursorXpos);
           glfwMakeContextCurrent(window1);
