@@ -283,8 +283,8 @@ void initBuffersGL(CONTEXT context)
   glBufferSubData( GL_ARRAY_BUFFER, sizeInBytes(vectorOf2Points), sizeInBytes(vectorOf2Colors), &vectorOf2Colors[0][0] );
   }
   // Load shaders and use the resulting shader program
-  std::string vertex_shader_file("03_vshader.glsl");
-  std::string fragment_shader_file("03_fshader.glsl");
+  std::string vertex_shader_file("bh_vshader.glsl");
+  std::string fragment_shader_file("bh_fshader.glsl");
 
   std::vector<GLuint> shaderList;
   shaderList.push_back(csX75::LoadShaderGL(GL_VERTEX_SHADER, vertex_shader_file));

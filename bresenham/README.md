@@ -1,20 +1,18 @@
-# Demo: Bresenham Line Drawing Algorithm
+# Demo: Bresenham's Line Drawing Algorithm
 
 <br>
 <br>
 
 ## About
- TODO
-This code is mostly same as the code of *01_triangle.cpp* (Tutorial_01). So you might see quite a lot similarities.
-In this tutorial we draw a cube with OpenGL. When you untar the downloaded tgz file, you will find a cpp and a hpp file **03_colorcube.cpp** and **03_colorcube.hpp** and a file named **Makefile**. You will also find two shader files, **03_fshader.glsl** and **03_vshader.glsl**.
+
+In this tutorial we draw a line by first figuring out the pixels to plot as GL_POINTS using Brensenham's Algorithm covered in the lectures. In a separate window we see how the same is done with GL_LINES provided by OpenGL. Additionallly we also implement the "All-integer optimization" of Bresenham's ALgorithm and extend both float and int versions to work in all octants.
 
 <br>
 <br>
 
 ## Running the code
-TODO
 Same as Tutorial_01, compilation of the code can be done using `make`.
-If you have a driver supporting OpenGL 4.1 then running `03_colorcube` will do the trick for you. But if your system supports OpenGL 3.2+. Then in order to run the code the following changes need to be made in the **03_colorcube.cpp**. In the line number 154 and 155,
+If you have a driver supporting OpenGL 4.1 then running `bresenham` will do the trick for you. But if your system supports OpenGL 3.2+. Then in order to run the code the following changes need to be made in the **bresenham.cpp**. In the main function,
 
 ```cpp
 glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -28,85 +26,12 @@ glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3);
 glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3);
 ```
 
-Also in the **03_fshader.glsl** and **03_vshader.glsl** you need to modify the first line to
+Also in the **bh_fshader.glsl** and **bh_vshader.glsl** you need to modify the first line to
 ```cpp
 # version 330
 ```
 
-Once you make the above changes you can compile and run the 02_colorcube file.
-
-<br>
-<br>
-
-## Understanding the code
-
-Now, expecting that you have already went throught the Tutorial_01, We won’t go through the most of the basic skeleton code that has already been explained in the Tutorial_01. For example the ```main()``` function, it is exactly the same and doesn’t need any further explanation.
-
-To start with, we have defined several variables, which we will come to later.
-
-```cpp
-GLuint shaderProgram;
-GLuint vbo, vao;
-```
-
-Next up, we declare positions of 8 vertices and colors for each of the vertices, this is also pretty similar to the previous tutorial.
-
-```cpp
-//6 faces, 2 triangles/face, 3 vertices/triangle
-const int num_vertices = 36;
-
-//Eight vertices in homogenous coordinates
-glm::vec4 positions[8] = {
-  glm::vec4(-0.5, -0.5, 0.5, 1.0),
-  glm::vec4(-0.5, 0.5, 0.5, 1.0),
-  glm::vec4(0.5, 0.5, 0.5, 1.0),
-  glm::vec4(0.5, -0.5, 0.5, 1.0),
-  glm::vec4(-0.5, -0.5, -0.5, 1.0),
-  glm::vec4(-0.5, 0.5, -0.5, 1.0),
-  glm::vec4(0.5, 0.5, -0.5, 1.0),
-  glm::vec4(0.5, -0.5, -0.5, 1.0)
-};
-
-//RGBA colors
-glm::vec4 colors[8] = {
-  glm::vec4(0.0, 0.0, 0.0, 1.0),
-  glm::vec4(1.0, 0.0, 0.0, 1.0),
-  glm::vec4(1.0, 1.0, 0.0, 1.0),
-  glm::vec4(0.0, 1.0, 0.0, 1.0),
-  glm::vec4(0.0, 0.0, 1.0, 1.0),
-  glm::vec4(1.0, 0.0, 1.0, 1.0),
-  glm::vec4(1.0, 1.0, 1.0, 1.0),
-  glm::vec4(0.0, 1.0, 1.0, 1.0)
-};
-```
-
-But here, we declare `num_vertices = 36`, now this has a reason. Since each object is expressed as triangles, we will construct every single face of a cube using two triangles.
-
-The next piece of code does exactly this thing. For every given value of a,b,c,d, it creates a face of a cube, by making two adjoint triangles looking as a square. Since we have specified the positions in a specific way, the calls made during the *colorcube()* command, create different faces of the cube, you can play around with these values to get a better understanding of this piece of code.
-
-```cpp
-// quad generates two triangles for each face and assigns colors to the vertices
-void quad(int a, int b, int c, int d)
-{
-  v_colors[tri_idx] = colors[a]; v_positions[tri_idx] = positions[a]; tri_idx++;
-  v_colors[tri_idx] = colors[b]; v_positions[tri_idx] = positions[b]; tri_idx++;
-  v_colors[tri_idx] = colors[c]; v_positions[tri_idx] = positions[c]; tri_idx++;
-  v_colors[tri_idx] = colors[a]; v_positions[tri_idx] = positions[a]; tri_idx++;
-  v_colors[tri_idx] = colors[c]; v_positions[tri_idx] = positions[c]; tri_idx++;
-  v_colors[tri_idx] = colors[d]; v_positions[tri_idx] = positions[d]; tri_idx++;
- }
-
-// generate 12 triangles: 36 vertices and 36 colors
-void colorcube(void)
-{
-    quad( 1, 0, 3, 2 );
-    quad( 2, 3, 7, 6 );
-    quad( 3, 0, 4, 7 );
-    quad( 6, 5, 1, 2 );
-    quad( 4, 5, 6, 7 );
-    quad( 5, 4, 0, 1 );
-}
-```
+Once you make the above changes you can compile and run the bresenham file.
 
 <br>
 <br>
@@ -184,25 +109,6 @@ Unlike the first Tutorial, here instead of only specifying *gl_Postion*, we are 
 
 The fragment shader is quite similar to the code previous tutorial and you can easily see that we are assigning the color of the fragment, from our input from vertex shader.
 
-<br>
-<br>
-
-## Rotation Matrix
-
-```cpp
-rotation_matrix = glm::rotate(glm::mat4(1.0f), xrot, glm::vec3(1.0f,0.0f,0.0f));
-rotation_matrix = glm::rotate(rotation_matrix, yrot, glm::vec3(0.0f,1.0f,0.0f));
-rotation_matrix = glm::rotate(rotation_matrix, zrot, glm::vec3(0.0f,0.0f,1.0f));
-  ortho_matrix = glm::ortho(-2.0, 2.0, -2.0, 2.0, -2.0, 2.0);
-```
-
-In this piece of code we multiply the rotations about x,y and z axes to the rotation matrix. Initially we start with identity matrix `glm::mat4(1.0f)`, then multiply the *xrot*, *yrot* and *zrot* one by one, the third parameter in `glm::rotate()` is the axis, along which we have to rotate. Also, in order to perform an orthographic projection, create a orthographic matrix with `glm::ortho()`, this sets up our orthographic projection matrix. The parameters given to it are our window co-ordinates in this order, left, right, bottom, top, z-near, z-far. Where, z-near and z-far are the location of near and far clipping plane. Finally, we multiply the ortho-matrix to rotation matrix, doing so applies the orthographic projection to model, when we multiply it to get our final coordinates in the shader.
-
-```cpp
-glUniformMatrix4fv(uModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelview_matrix));
-```
-
-The above statement modifies the value of *uModelViewMatrix*. The parameter ’1’ specifies that we are modifying one matrix and *GL_FALSE* specifies that there is no need to transpose the matrix and finally we provide with what value we need to modify the matrix.
 
 <br>
 <br>
