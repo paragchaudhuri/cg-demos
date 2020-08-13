@@ -34,9 +34,7 @@ glm::vec4 startPt,endPt,deltaPos;
 
 
 std::vector<glm::vec4> vectorOfPoints,vectorOfColors,vectorOf2Points,vectorOf2Colors;
-//Note that the vectors of known lengths are vectors just for consistency
-
-//glm::vec4 twoPoints[2],twoColors[2];
+//Note that the vectors of known lengths are vectors just for code consistency
 
 
 int winSizeX=512,winSizeY=512;
@@ -45,14 +43,105 @@ std::size_t sizeInBytes(std::vector<glm::vec4> arbitraryVector){ //can and shoul
   return arbitraryVector.size() * sizeof(arbitraryVector[0]) ;
 }
 
-/*std::size_t sizeInBytes(std::vector<glm::vec4> arbitraryArray){ //can and should be overloaded
-  return arbitraryVector.size() * sizeof(arbitraryVector[0]) ;
+
+void swap (int &x, int &y)
+{
+  int temp = x;
+  x = y; y = temp;
 }
-*/
+
+
+
+//Basic Bresenham line drawing(works only in first octant)
+void line1_F (int x0, int y0, int x1, int y1)
+{
+  vectorOfPoints.clear();
+  vectorOfColors.clear();
+  int deltax = x1 - x0;
+  int deltay = y1 - y0;
+  
+  float error = 0;
+  float newerr = 0;
+  float deltaerr = (float)deltay / (float)deltax;
+
+  int y = y0;
+  int newy = y0;
+
+  for (int x = x0; x < x1; x++){
+
+      error = error + deltaerr;
+
+      //glVertex2f(x, y);
+      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+      vectorOfColors.push_back(glm::vec4(1.0, 0.1, 0.1, 1.0) );
+
+      if (error > 0.5) 
+      {
+        y = y + 1;
+        error = error - 1.0;
+      }
+    }
+}
+
+//Generalized Bresenham (works for all lines)
+void line8_F (int x0, int y0, int x1, int y1)
+{
+  vectorOfPoints.clear();
+  vectorOfColors.clear();
+  bool steep = abs(y1 - y0) > abs(x1 - x0);
+  if (steep)
+    {
+      swap(x0, y0);
+      swap(x1, y1);
+    }
+  if (x0 > x1)
+    {
+      swap(x0, x1);
+      swap(y0, y1);
+    }
+  int deltax = x1 - x0;
+  int deltay = abs(y1 - y0);
+
+  float error = 0.0;
+  float deltaerr = (float)deltay / (float)deltax;
+
+  int ystep;
+  int y = y0;
+
+  if (y0 < y1) ystep = 1; else ystep = -1;
+
+
+
+
+  for (int x=x0; x < x1; x++)
+    {
+      if (steep){
+        vectorOfPoints.push_back( glm::vec4(2*float(y)/winSizeX - 1 , 1 - 2*float(x)/winSizeY ,0,1) );
+        vectorOfColors.push_back(glm::vec4(0.1, 1.0, 0.1, 1.0) );
+      }
+      else{
+        vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+        vectorOfColors.push_back(glm::vec4(0.1, 1.0, 0.1, 1.0) );
+      } 
+    
+
+      error = error + deltaerr;
+      if (error >= 0.5) 
+  {
+    y = y + ystep;
+    error = error - 1.0;
+  }
+    }
+  //glEnd();
+}
+
 
 //Integer Optimized Bresenham line drawing(works only in first octant)
 void line1_I (int x0, int y0, int x1, int y1)
 {
+
+  //Please refer to notes posted for the derivation of this integer-optimized version.
+
   vectorOfPoints.clear();
   vectorOfColors.clear();
   int deltax = x1 - x0;
@@ -73,20 +162,15 @@ void line1_I (int x0, int y0, int x1, int y1)
       d += 2*deltay - 2*deltax;
       y++;
     }
-      //The following part has float values for OpenGL but floats are not used in the bresenham component! 
+      //The following part has float values for point plotting in OpenGL but floats are not used in the bresenham component! 
       vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
       vectorOfColors.push_back(glm::vec4(1.0, float(y-y0)/deltay, float(y-y0)/deltay, 1.0) );
 
     }
 }
 
-void swap (int &x, int &y)
-{
-  int temp = x;
-  x = y; y = temp;
-}
 
-
+//Integer Optimized Bresenham line drawing(works in all octant)
 void line8_I (int x0, int y0, int x1, int y1)
 {
   vectorOfPoints.clear();
@@ -132,7 +216,7 @@ void line8_I (int x0, int y0, int x1, int y1)
       d += 2*deltay - 2*deltax;
       y++;
     }
-      //The following part has float values for OpenGL but floats are not used in the bresenham component! 
+      //The following part has float values for point plotting in OpenGL but floats are not used in the bresenham component! 
     if(steep)
       vectorOfPoints.push_back( glm::vec4(2*float(mult*y)/winSizeX - 1 , 1 - 2*float(x)/winSizeY ,0,1) );
     else
@@ -143,91 +227,6 @@ void line8_I (int x0, int y0, int x1, int y1)
     }
 }
 
-
-//Basic Bresenham line drawing(works only in first octant)
-void line1_F (int x0, int y0, int x1, int y1)
-{
-  vectorOfPoints.clear();
-  vectorOfColors.clear();
-  int deltax = x1 - x0;
-  int deltay = y1 - y0;
-  
-  float error = 0;
-  float newerr = 0;
-  float deltaerr = (float)deltay / (float)deltax;
-
-  int y = y0;
-  int newy = y0;
-
-  for (int x = x0; x < x1; x++){
-
-      error = error + deltaerr;
-
-      //glVertex2f(x, y);
-      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
-      vectorOfColors.push_back(glm::vec4(1.0, 0.1, 0.1, 1.0) );
-
-      if (error > 0.5) 
-      {
-        y = y + 1;
-        error = error - 1.0;
-      }
-    }
-}
-
-
-
-//Generalized Bresenham (works for all lines)
-void line8_F (int x0, int y0, int x1, int y1)
-{
-  vectorOfPoints.clear();
-  vectorOfColors.clear();
-  bool steep = abs(y1 - y0) > abs(x1 - x0);
-  if (steep)
-    {
-      swap(x0, y0);
-      swap(x1, y1);
-    }
-  if (x0 > x1)
-    {
-      swap(x0, x1);
-      swap(y0, y1);
-    }
-  int deltax = x1 - x0;
-  int deltay = abs(y1 - y0);
-
-  float error = 0.0;
-  float deltaerr = (float)deltay / (float)deltax;
-
-  int ystep;
-  int y = y0;
-
-  if (y0 < y1) ystep = 1; else ystep = -1;
-
-
-
-  //glBegin(GL_POINTS);
-  for (int x=x0; x < x1; x++)
-    {
-      if (steep){
-        vectorOfPoints.push_back( glm::vec4(2*float(y)/winSizeX - 1 , 1 - 2*float(x)/winSizeY ,0,1) );
-        vectorOfColors.push_back(glm::vec4(0.1, 1.0, 0.1, 1.0) );
-      }
-      else{
-        vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
-        vectorOfColors.push_back(glm::vec4(0.1, 1.0, 0.1, 1.0) );
-      } 
-    
-
-      error = error + deltaerr;
-      if (error >= 0.5) 
-  {
-    y = y + ystep;
-    error = error - 1.0;
-  }
-    }
-  //glEnd();
-}
 
 
 void pointsForGL(int x0, int y0, int x1, int y1){
@@ -241,16 +240,6 @@ void pointsForGL(int x0, int y0, int x1, int y1){
       vectorOf2Points.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
       vectorOf2Colors.push_back(glm::vec4(1.0, 0.5, 1.0, 1.0) );
 }
-
-void renderGL(void)
-{
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  // Draw
-  glDrawArrays(GL_POINTS,0,vectorOfPoints.size()) ;
-}
-
-
-
 
 
 void initBuffersGL(CONTEXT context)
@@ -398,7 +387,6 @@ int main(int argc, char** argv)
       return -1;
     }
 
-  //window2 = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: OpenGL Line", NULL, window);
   window2 = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: OpenGL Line", NULL, NULL);
   if (!window2)
     {
@@ -461,7 +449,7 @@ int main(int argc, char** argv)
   std::cout<<"Press 2 for ALL_FLOAT mode ..." <<std::endl;
   std::cout<<"Press 3 for ONE_INT mode ..." <<std::endl;
   std::cout<<"Press 4 for ALL_INT mode ..." <<std::endl;
-
+  std::cout<<"------------------------------" <<std::endl;
 
   // Loop until the user closes the window
   while (glfwWindowShouldClose(window1) == 0  && glfwWindowShouldClose(window2) == 0)
