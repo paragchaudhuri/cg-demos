@@ -38,6 +38,14 @@ Once you make the above changes you can compile and run the bresenham file.
 <br>
 
 
+## Keyboard Input
+
+In the `key_callback()` function in **gl_framework.cpp** we deal with various keyboard inputs. You can see that here we increment/decrement our rotation parameters whenever their respective key is pressed. Mouse callbacks work in a simialr fashion.
+
+<br>
+<br>
+
+
 ## Output
 
 The window on the right displays the line corresponding to the points specified in the window on the left using GL_LINES. This GL_LINES version is colored purple. The left window is responsible for displaying the lines using bresenham's algorithm. Press the following keys to activate the modes corresponding to the specific implementaions/extensions of bresenham's algorithm:
@@ -47,10 +55,4 @@ The window on the right displays the line corresponding to the points specified 
 * '3' : Integer version, 1 octant only
 * '4' : Integer version, all 8 octants
 
-<br>
-<br>
 
-
-## Keyboard Input
-
-In the `key_callback()` function in **gl_framework.cpp** we deal with various keyboard inputs. You can see that here we increment/decrement our rotation parameters whenever their respective key is pressed. Mouse callbacks work in a simialr fashion.
