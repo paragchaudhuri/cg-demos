@@ -40,7 +40,7 @@ Once you make the above changes you can compile and run the bresenham file.
 
 ## Keyboard Input
 
-In the `key_callback()` function in **gl_framework.cpp** we deal with various keyboard inputs. You can see that here we increment/decrement our rotation parameters whenever their respective key is pressed. Mouse callbacks work in a simialr fashion.
+In the `key_callback()` function in **gl_framework.cpp** we deal with various keyboard inputs. You can see that here we increment/decrement our rotation parameters whenever their respective key is pressed. Mouse callbacks work in a similar fashion.
 
 <br>
 <br>
