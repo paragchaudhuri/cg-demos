@@ -1,9 +1,6 @@
 /*
-  A program which opens a window and draws the "color cube."
-
-  Use the arrow keys and PgUp,PgDn, 
-  keys to make the cube move.
-
+  A program which opens 2 windows and draws the lines
+  Input keys specified in readme.
   Written by - 
                Parag Chaudhuri
 */
@@ -16,12 +13,12 @@
 #define DELETE 127
 
 #include "gl_framework.hpp"
-#include "shader_util.hpp"
-#include "glm/vec3.hpp"
-#include "glm/vec4.hpp"
-#include "glm/mat4x4.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
+#include "../common/shader_util.hpp"
+#include "../common/glm/vec3.hpp"
+#include "../common/glm/vec4.hpp"
+#include "../common/glm/mat4x4.hpp"
+#include "../common/glm/gtc/matrix_transform.hpp"
+#include "../common/glm/gtc/type_ptr.hpp"
 
 
 // Translation Parameters

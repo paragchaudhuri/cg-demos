@@ -84,6 +84,11 @@ void line1_F (int x0, int y0, int x1, int y1)
 }
 
 //Generalized Bresenham (works for all lines)
+// line1_F Works in one octant.
+// for steep cases, swapping x and y makes it work in X 2 octants
+// for decreasing x cases, swapping x1,y1 and x2,y2 makes it work in X 2 octants
+// for negative slope cases ,  considering negative steps makes it work in X 2 octants
+// total: 1 X 8 octants
 void line8_F (int x0, int y0, int x1, int y1)
 {
   vectorOfPoints.clear();
@@ -109,8 +114,6 @@ void line8_F (int x0, int y0, int x1, int y1)
   int y = y0;
 
   if (y0 < y1) ystep = 1; else ystep = -1;
-
-
 
 
   for (int x=x0; x < x1; x++)

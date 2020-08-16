@@ -8,8 +8,8 @@ LDFLAGS=-L/usr/local/lib
 CPPFLAGS=-I/usr/local/include -I./
 
 BIN=bresenham
-SRCS=bresenham.cpp gl_framework.cpp shader_util.cpp 
-INCLUDES=gl_framework.hpp shader_util.hpp bresenham.hpp
+SRCS=bresenham.cpp gl_framework.cpp ../common/shader_util.cpp 
+INCLUDES=gl_framework.hpp ../common/shader_util.hpp bresenham.hpp
 
 all: $(BIN)
 
