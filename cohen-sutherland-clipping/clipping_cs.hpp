@@ -22,6 +22,7 @@
 
 //Include Files
 #include "../common/glm/vec4.hpp"
+#include "../common/glm/vec2.hpp"
 #include "../common/glm/mat4x4.hpp"
 #include "gl_framework.hpp"
 #include "../common/shader_util.hpp"

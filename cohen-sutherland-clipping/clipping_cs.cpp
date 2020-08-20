@@ -141,14 +141,13 @@ void drawLines(int x1, int y1, int x2, int y2, bool prim_mode)
    if(prim_mode)
    {
       v_colors.push_back(lineColor); v_positions.push_back(glm::vec4(2*float(x2)/winSizeX - 1 , 1 - 2*float(y2)/winSizeY, 0, 1.0));
-      v_colors.push_back(lineColor); v_positions.push_back(v_positions.at(num_view_points));	
+      v_colors.push_back(lineColor); v_positions.push_back(v_positions.at(num_view_points));
    }
 }
 
-/* Cohen Sutherland algorithm snippet modified from:
+/* Cohen Sutherland line algorithm snippet modified from:
  https://www.geeksforgeeks.org/line-clipping-set-1-cohen-sutherland-algorithm/
 */
-//Helper function for clipping functions
 // Defining region codes 
 const int INSIDE = 0; // 0000 
 const int LEFT = 1; // 0001 
@@ -156,6 +155,7 @@ const int RIGHT = 2; // 0010
 const int BOTTOM = 4; // 0100 
 const int TOP = 8; // 1000 
 
+// Helper function for clipping functions
 int computeCode(double x, double y) 
 { 
     // initialized as being inside 
@@ -277,7 +277,9 @@ void selectLines()
         v_colors.at(currIdx+1) = selectedColor;  
      }
      else
-     	animDisplay = false; 
+     {
+     	animDisplay = false; 	
+     }
      	
      if(currIdx > num_view_points)
      {
@@ -404,10 +406,389 @@ void updateLines()
      currCase = -1;
 }
 
-//Clips the input polygon by the rectangular region
-void clipPolygon()
-{
+/* Sutherland Hodgman polygon algorithm snippet modified from:
+https://www.geeksforgeeks.org/polygon-clipping-sutherland-hodgman-algorithm-please-change-bmp-images-jpeg-png/
+*/
+// Helper function to return x-value of point of intersectipn of two lines 
+float x_intersect(float x1, float y1, float x2, float y2, 
+                float x3, float y3, float x4, float y4) 
+{ 
+    float num = (x1*y2 - y1*x2) * (x3-x4) - 
+              (x1-x2) * (x3*y4 - y3*x4); 
+    float den = (x1-x2) * (y3-y4) - (y1-y2) * (x3-x4); 
+    return num/den; 
+} 
+  
+// Helper function to returns y-value of point of intersectipn of two lines 
+float y_intersect(float x1, float y1, float x2, float y2, 
+                float x3, float y3, float x4, float y4) 
+{ 
+    float num = (x1*y2 - y1*x2) * (y3-y4) - 
+              (y1-y2) * (x3*y4 - y3*x4); 
+    float den = (x1-x2) * (y3-y4) - (y1-y2) * (x3-x4); 
+    return num/den;
+}
 
+// Clips an edge w.r.t to another edge of clipping area using Sutherland Hodgman Algorithm
+std::vector<glm::vec2> sutherlandHodgmanPolygon(float x1, float y1, float x2, float y2,
+						  float sx, float sy, float ex, float ey) 
+{ 
+    std::vector<glm::vec2> new_points; 
+    // Calculating position of first point w.r.t. clipper line 
+    float s_pos = (x2-x1) * (sy-y1) - (y2-y1) * (sx-x1); 
+
+    // Calculating position of second point w.r.t. clipper line 
+    float e_pos = (x2-x1) * (ey-y1) - (y2-y1) * (ex-x1); 
+
+     if((x1 == L && x2 == L) || (y1 == B && y2 == B))
+     {
+     	s_pos *= -1;
+     	e_pos *= -1;
+     }
+     
+    // Case 1 : When both points are inside 
+    if (s_pos < 0  && e_pos < 0) 
+    {
+    	new_points.push_back(glm::vec2(sx, sy));
+    	new_points.push_back(glm::vec2(ex, ey));
+    	
+    	currCase = 1;
+     } 
+
+     // Case 2: When only first point is outside 
+     else if (s_pos >= 0  && e_pos < 0) 
+     {
+    	new_points.push_back(glm::vec2(x_intersect(x1,y1, x2, y2, sx, sy, ex, ey),
+    				        y_intersect(x1,y1, x2, y2, sx, sy, ex, ey)));            				      
+    	new_points.push_back(glm::vec2(ex, ey));
+    	
+    	currCase = 2;
+      } 
+
+      // Case 3: When only second point is outside 
+      else if (s_pos < 0  && e_pos >= 0) 
+      {
+    	new_points.push_back(glm::vec2(sx, sy));
+    	new_points.push_back(glm::vec2(x_intersect(x1,y1, x2, y2, sx, sy, ex, ey),
+    				        y_intersect(x1,y1, x2, y2, sx, sy, ex, ey)));
+        currCase = 3;
+      } 
+
+       // Case 4: When both points are outside 
+      else
+      {
+         currCase = 4;
+     	//No points are added 
+       }
+    
+    return new_points;
+} 
+  
+int counterUp = 0; // counter to maintain number of insertions to vertex list
+int pSize = 0; // maintains updated size of list of vertices
+
+// clips input polygon by the clipper polygon
+void clipPolygon() 
+{ 
+    pSize = v_positions.size();
+    if(currIdx < v_positions.size() - 1 && currIdx >= num_view_points)
+    {   
+        int counter = currIdx;
+        for (int i = num_view_points - 8; i < num_view_points - 1; i+=2)
+        {
+               float x1 = v_positions.at(counter)[0], y1 = v_positions.at(counter)[1];
+        	float x2 = v_positions.at(counter+1)[0], y2 = v_positions.at(counter+1)[1];
+		
+		std::vector<glm::vec2> acceptedPoints = sutherlandHodgmanPolygon(v_positions.at(i)[0], v_positions.at(i)[1],
+										   v_positions.at(i+1)[0], v_positions.at(i+1)[1],
+										   x1, y1, x2, y2);
+
+		if(currCase == 1)
+		{
+		   v_colors.at(counter) = selectedColor;
+		   v_colors.at(counter+1) = selectedColor;
+		   
+		   
+		}
+		else if(currCase == 2)
+		{
+		   v_colors.at(counter) = clipColor;	
+		   
+	           v_positions.at(counter+1) = glm::vec4(acceptedPoints.at(0)[0], acceptedPoints.at(0)[1], 0, 1.0);
+	           v_colors.at(counter+1) = clipColor;
+	           
+	           counterUp++;
+		}
+		else if(currCase == 3)
+		{
+		   v_colors.at(counter+1) = clipColor;	
+		   
+	           v_positions.at(counter) = glm::vec4(acceptedPoints.at(1)[0], acceptedPoints.at(1)[1], 0, 1.0);
+	           v_colors.at(counter) = clipColor;
+	           
+	           counterUp++;
+		}
+		else if(currCase == 4)
+		{
+		   v_colors.at(counter) = clipColor;
+		   v_colors.at(counter+1) = clipColor;
+		   counterUp++;
+		   
+		   return;
+		}
+		
+		if(currCase != 1)
+		{
+		     for(int i = 0; i < acceptedPoints.size(); i++)
+		     {
+		        v_positions.insert(v_positions.begin() + counter + i + 2, glm::vec4(acceptedPoints.at(i)[0], acceptedPoints.at(i)[1], 0, 1.0));
+		        v_colors.insert(v_colors.begin() + counter + i + 2, selectedColor);
+		     }
+		     
+		     if(currCase == 2 || currCase == 3)
+		     {
+		     	counter = counter + 2;		     	
+		     }
+		}
+    	 }
+      }
+}
+
+// update thr polygon with clipped lines
+void updateClipPolygon()
+{       
+    for(int i = 0; i < 2*counterUp; i++)
+    {
+       v_positions.erase(v_positions.begin() + currIdx);
+       v_colors.erase(v_colors.begin() + currIdx);
+    }
+}
+
+int clipCounter = 1; // Auxilliary counter
+// add edges along the clipper lines to the clipped polygon
+void completeClipPolygon()
+{
+    if(pSize <= v_positions.size())
+    {
+       if(clipCounter >= 2 && currIdx <= v_positions.size() && currIdx-1 >= num_view_points)
+       {
+	  int c = v_positions.size();
+	  int counterN = currIdx;
+	  if(currIdx%c == 0)
+	  	counterN = num_view_points;
+	  	
+          float x1 = v_positions.at(currIdx-1)[0], y1 = v_positions.at(currIdx-1)[1];
+          float x2 = v_positions.at(counterN)[0], y2 = v_positions.at(counterN)[1];
+        
+          // Neighbouring vertices are on same clipper edge
+          if((x1 == x2 && y1 != y2) || (x1 != x2 && y1 == y2))
+          {
+		v_positions.insert(v_positions.begin() + currIdx, glm::vec4(x1, y1, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx, acceptColor);
+		
+		v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(x2, y2, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+
+		currIdx += 2;
+          }
+          // Neighbouring vertices are on dialgonally opposite clipper edges.
+          else if(x1 == L && x2 == R)
+          {
+                v_positions.insert(v_positions.begin() + currIdx, glm::vec4(x1, y1, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx, acceptColor);
+        
+          	if(v_positions.at(currIdx-2)[1] == T)
+          	{
+			v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(L, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(L, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(R, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor);  
+			
+			v_positions.insert(v_positions.begin() + currIdx + 4, glm::vec4(R, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 4, acceptColor);     	
+          	}
+          	else
+          	{				
+			v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(L, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(L, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(R, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor);   
+			
+			v_positions.insert(v_positions.begin() + currIdx + 4, glm::vec4(R, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 4, acceptColor);     	
+          	}
+          	
+          	v_positions.insert(v_positions.begin() + currIdx + 5, glm::vec4(x2, y2, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx + 5, acceptColor);
+			
+		currIdx += 6;     
+          }
+          else if(x1 == R && x2 == L)
+          {
+               v_positions.insert(v_positions.begin() + currIdx, glm::vec4(x1, y1, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx, acceptColor);
+        
+          	if(v_positions.at(currIdx-2)[1] == T)
+          	{				
+			v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(R, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(R, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(L, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 4, glm::vec4(L, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 4, acceptColor);     	
+          	}
+          	else
+          	{				
+			v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(R, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(R, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(L, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 4, glm::vec4(L, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 4, acceptColor);     	
+          	}
+          	
+          	v_positions.insert(v_positions.begin() + currIdx + 5, glm::vec4(x2, y2, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx + 5, acceptColor);
+			
+		currIdx += 6;     
+          }
+          else if(y1 == T && y2 == B)
+          {
+               v_positions.insert(v_positions.begin() + currIdx, glm::vec4(x1, y1, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx, acceptColor);
+        
+          	if(v_positions.at(currIdx-2)[0] == L)
+          	{
+          		v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(R, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+							
+			v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(R, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(R, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 4, glm::vec4(R, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 4, acceptColor);   	
+          	}
+          	else
+          	{
+          		v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(L, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+							
+			v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(L, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(L, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor); 
+			
+			v_positions.insert(v_positions.begin() + currIdx + 4, glm::vec4(L, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 4, acceptColor);  	
+          	}
+          	
+          	v_positions.insert(v_positions.begin() + currIdx + 5, glm::vec4(x2, y2, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx + 5, acceptColor);
+			
+		currIdx += 6;     
+          }
+          else if(y1 == B && y2 == T)
+          {
+               v_positions.insert(v_positions.begin() + currIdx, glm::vec4(x1, y1, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx, acceptColor);
+        
+          	if(v_positions.at(currIdx-2)[0] == L)
+          	{				
+			v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(R, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(R, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(R, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor);     
+			
+			v_positions.insert(v_positions.begin() + currIdx + 4, glm::vec4(R, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 4, acceptColor);     	
+          	}
+          	else
+          	{				
+			v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(L, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(L, B, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+			
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(L, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor);  
+			
+			v_positions.insert(v_positions.begin() + currIdx + 4, glm::vec4(L, T, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 4, acceptColor);     	
+          	}
+          	
+          	v_positions.insert(v_positions.begin() + currIdx + 5, glm::vec4(x2, y2, 0, 1.0));
+		v_colors.insert(v_colors.begin() + currIdx + 5, acceptColor);
+			
+		currIdx += 6;     
+          }
+          //Neighbouring vertices are adjacent clipper edges
+          else
+          {
+          	if(((x1 == L || x1 == R) || (y2 == T || y2 == B)) || 
+          	    (x2 == L || x2 == R) || (y1 == T || y1 == B))
+          	{
+          		v_positions.insert(v_positions.begin() + currIdx, glm::vec4(x1, y1, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx, acceptColor);
+		  
+		  	if((x1 == L || x1 == R) && (y2 == T || y2 == B))
+		  	{		
+			     v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(x1, y2, 0, 1.0));
+			     v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+			     
+			     v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(x1, y2, 0, 1.0));
+			     v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+		  	}
+		  	else if((x2 == L || x2 == R) && (y1 == T || y1 == B))
+		  	{		
+			     v_positions.insert(v_positions.begin() + currIdx + 1, glm::vec4(x2, y1, 0, 1.0));
+			     v_colors.insert(v_colors.begin() + currIdx + 1, acceptColor);
+			     
+			     v_positions.insert(v_positions.begin() + currIdx + 2, glm::vec4(x2, y1, 0, 1.0));
+			     v_colors.insert(v_colors.begin() + currIdx + 2, acceptColor);
+		  	}
+		  	
+			v_positions.insert(v_positions.begin() + currIdx + 3, glm::vec4(x2, y2, 0, 1.0));
+			v_colors.insert(v_colors.begin() + currIdx + 3, acceptColor);
+		  	
+		  	currIdx += 4;          	
+          	}
+           }
+           pSize = v_positions.size();
+       }
+       
+       currIdx += 2;
+       clipCounter++;
+    }    
+    	
+    counterUp = 0;
+    currCase = -1; 
 }
 //-----------------------------------------------------------------
 
@@ -452,6 +833,10 @@ void initBuffersGL(void)
 
 void reloadBuffers()
 {
+   // To render lines on top of viewpoint lines
+   std::reverse(v_positions.begin(), v_positions.end());
+   std::reverse(v_colors.begin(), v_colors.end());
+  
   //Copy the points into the current buffer
   glBufferData (GL_ARRAY_BUFFER, sizeInBytes(v_positions) + sizeInBytes(v_colors), NULL, GL_DYNAMIC_DRAW);
   glBufferSubData( GL_ARRAY_BUFFER, 0, sizeInBytes(v_positions), &v_positions[0][0] );
@@ -465,6 +850,12 @@ void reloadBuffers()
   GLuint vColor = glGetAttribLocation( shaderProgram, "vColor" ); 
   glEnableVertexAttribArray( vColor );
   glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(v_positions)) );
+  
+  // Get back original arrays
+  std::reverse(v_positions.begin(), v_positions.end());
+  std::reverse(v_colors.begin(), v_colors.end());
+  
+  glLineWidth((GLfloat)4);
 }
 
 void clearBuffer()
@@ -475,6 +866,8 @@ void clearBuffer()
      v_positions.pop_back();
      v_colors.pop_back();
   }
+  
+  currIdx = num_view_points;
 }
 
 void renderGL(void)
@@ -571,11 +964,28 @@ int main(int argc, char** argv)
   	  }
   	  else
   	  {
+  	      selectLines();
+  	      reloadBuffers();
+              sleep(delay);
+  	      
   	      clipPolygon();
+  	      reloadBuffers();
+  	      renderGL();
+  	      sleep(delay);
+  	      
+  	      updateClipPolygon();
+  	      reloadBuffers();
+  	      sleep(delay);
+  	      
+  	      completeClipPolygon();
+  	      reloadBuffers();
   	  }
       }
       else
-          renderGL();
+      {
+    	  renderGL();
+      }
+
       // Swap front and back buffers
       glfwSwapBuffers(window);
       
