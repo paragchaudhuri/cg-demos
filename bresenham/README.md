@@ -7,32 +7,13 @@
 
 In this tutorial we draw a line by first figuring out the pixels to plot as GL_POINTS using Brensenham's Algorithm covered in the lectures. In a separate window we see how the same is done with GL_LINES provided by OpenGL. Additionallly we also implement the "All-integer optimization" of Bresenham's ALgorithm and extend both float and int versions to work in all octants.
 
-
+The code uses OpenGL 3.3. 
 <br>
 <br>
 
 ## Running the code
-Same as Tutorial_01, compilation of the code can be done using `make`.
-If you have a driver supporting OpenGL 4.1 then running `bresenham` will do the trick for you. But if your system supports OpenGL 3.2+. Then in order to run the code the following changes need to be made in the **bresenham.cpp**. In the main function,
+Compilation of the code can be done using `make`. Type `./bresenham` to execute.
 
-```cpp
-glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4);
-glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 1);
-```
-
-you need to change to
-
-```cpp
-glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3);
-glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3);
-```
-
-Also in the **bh_fshader.glsl** and **bh_vshader.glsl** you need to modify the first line to
-```cpp
-# version 330
-```
-
-Once you make the above changes you can compile and run the bresenham file.
 
 <br>
 <br>
