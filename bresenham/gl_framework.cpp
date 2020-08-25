@@ -14,6 +14,9 @@ extern void reloadBuffers(CONTEXT context);
 
 extern GLFWwindow* window1;
 extern GLFWwindow*  window2;
+
+extern int winSizeY;
+
 namespace csX75
 {
 
@@ -93,11 +96,11 @@ namespace csX75
         else{
           //std::cerr<<"Even click: "<<cursorXpos<<" , "<<cursorYpos<<std::endl;
           if (mode == ONE_FLOAT)
-            line1_F(x0,y0,cursorXpos,cursorYpos);
+            line1_F(x0,winSizeY-y0,cursorXpos,winSizeY-cursorYpos);
           if (mode == ALL_FLOAT)
             line8_F(x0,y0,cursorXpos,cursorYpos);
           if (mode == ONE_INT)
-            line1_I(x0,y0,cursorXpos,cursorYpos);
+            line1_I(x0,winSizeY-y0,cursorXpos,winSizeY-cursorYpos);
           pointsForGL(x0,y0, cursorXpos,cursorYpos);
           if (mode == ALL_INT)
             line8_I(x0,y0,cursorXpos,cursorYpos);
