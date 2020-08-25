@@ -7,31 +7,13 @@
 
 In this demo we clip lines and edges of polygons using Cohen-sutherland and Sutherland-Hodgman algorithms, respectively. The lines and edges are defined by the mouse-clicks on the screen. In case of polygon clipping, the edges of the polygon along the clipper edges are completed accordingly.
 
+This code uses OpenGL 3.3
 <br>
 <br>
 
 ## Running the code
-Same as Tutorial_01, compilation of the code can be done using `make`.
-If you have a driver supporting OpenGL 4.1 then running `clipping_cs` will do the trick for you. But if your system supports OpenGL 3.2+. Then in order to run the code the following changes need to be made in the **cipping_cs.cpp**. In the main function,
+Compilation of the code can be done using `make`. Type `./clipping_cs` to run the code.
 
-```cpp
-glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4);
-glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 1);
-```
-
-you need to change to
-
-```cpp
-glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3);
-glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3);
-```
-
-Also in the **clipping_cs_fshader.glsl** and **clipping_cs_vshader.glsl** you need to modify the first line to
-```cpp
-# version 330
-```
-
-Once you make the above changes you can compile and run the bresenham file.
 
 <br>
 <br>
