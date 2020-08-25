@@ -72,10 +72,10 @@ void line1_F (int x0, int y0, int x1, int y1)
       error = error + deltaerr;
 
       //glVertex2f(x, y);
-      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 2*float(y)/winSizeY - 1 ,0,1) );
       vectorOfColors.push_back(glm::vec4(1.0, 0.1, 0.1, 1.0) );
 
-      if (error > 0.5) 
+      if (error >= 0.5) 
       {
         y = y + 1;
         error = error - 1.0;
@@ -166,7 +166,7 @@ void line1_I (int x0, int y0, int x1, int y1)
       y++;
     }
       //The following part has float values for point plotting in OpenGL but floats are not used in the bresenham component! 
-      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 1 - 2*float(y)/winSizeY ,0,1) );
+      vectorOfPoints.push_back( glm::vec4(2*float(x)/winSizeX - 1 , 2*float(y)/winSizeY - 1,0,1) );
       vectorOfColors.push_back(glm::vec4(1.0, float(y-y0)/deltay, float(y-y0)/deltay, 1.0) );
 
     }
