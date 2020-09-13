@@ -6,41 +6,39 @@ in vec3 vNormal;
 
 out vec4 color;
 
-uniform mat4 uModelViewProjectMatrix;
+uniform mat4 modelViewProjectMatrix;
 uniform mat3 normalMatrix;
-uniform mat4 viewProjectMatrix;
+uniform mat4 modelViewMatrix;
 
 
 void main (void) 
 {
 
   // Defining Materials
-  vec4 diffuse = vec4(0.5, 0.5, 0.5, 1.0); 
-  vec4 ambient = vec4(0.2, 0.2, 0.2, 1.0);
-  vec4 specular = vec4(0.5, 0.5, 1.0, 1.0);
-  float shininess = 0.05;
+  vec4 diffuse = vec4(1.0, 1.0, 0.0, 1.0); 
+  vec4 ambient = vec4(0.02, 0.02, 0.02, 1.0);
+  vec4 specular = vec4(0.1, 0.1, 0.0, 1.0);
+  float shininess = 100;
   vec4 spec = vec4(0.0); 
   
+  vec3 v = vec3(modelViewMatrix * vPosition);
+  vec3 N = normalize(normalMatrix * vNormal);
+  vec3 E = normalize(-v);       // we are in Eye Coordinates, so EyePos is (0,0,0)  
+  
+  
   // Defining Light 
-  vec4 lightPos = vec4(0.0, 0.0, 1.0, 0.0);
-  vec3 lightDir = vec3(viewProjectMatrix * lightPos); 
-  lightDir = normalize(lightDir);  
-
-  gl_Position = uModelViewProjectMatrix * vPosition;
+  vec4 lightPos = vec4(0.0, 0.0, 10.0, 0.0);
+  vec3 L = normalize(lightPos.xyz - v); 
+  vec3 R = normalize(-reflect(L,N));  
   
-  vec3 n = normalize(normalMatrix * normalize(vNormal));
-  float dotProduct = dot(n, lightDir);
-  float intensity =  max( dotProduct, 0.0);
+  vec4 Idiff = vColor * diffuse * max(dot(N,L),0.0);
 
-  // Compute specular component only if light falls on vertex
-  if(intensity > 0.0)
-  {
-	vec3 eye = normalize( vec3(-gl_Position));
-	vec3 h = normalize(lightDir + eye );
-   	float intSpec = max(dot(h,n), 0.0);	
-        spec = specular * pow(intSpec, shininess);
-  }  	
+  vec4 Ispec = specular * pow(max(dot(R,E),0.0),shininess);
+
+  vec4 Iamb = ambient;
+
+  color = Iamb + Idiff + Ispec;
   
-  color = max((intensity * diffuse  + spec)*vColor, ambient); // All
+  gl_Position = modelViewProjectMatrix * vPosition;
       
 }
