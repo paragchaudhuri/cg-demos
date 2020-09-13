@@ -13,6 +13,7 @@ CSX75 Demo:
     Written by Parag Chaudhuri, 2015
   }
   teapot obj sourced from: https://graphics.stanford.edu/courses/cs148-10-summer/as3/code/as3/teapot.obj
+  https://people.sc.fsu.edu/~jburkardt/data/obj/obj.html
   2020
 */
 
@@ -35,7 +36,7 @@ GLuint vbo[1], vao[1];
 int winSizeX=1280,winSizeY=720;
 
 
-glm::mat4 modelviewproject_matrix;
+glm::mat4 modelViewProject_matrix;
 
 glm::mat4 projection_matrix;
 glm::mat4 ortho_matrix;
@@ -43,15 +44,19 @@ glm::mat4 perspective_matrix;
 int projectionType=1;
 
 glm::mat4 view_matrix;
+glm::mat4 viewProject_matrix;
 glm::mat4 model_matrix;
+
+glm::mat3 normal_matrix;
 
 
 glm::mat4 rotation_matrix;
 glm::mat4 scaling_matrix;
 glm::mat4 translation_matrix;
 
-GLuint uModelViewMatrix;
-
+GLuint uModelViewProjectMatrix;
+GLuint viewProjectMatrix;
+GLuint normalMatrix;
 
 //-----------------------------------------------------------------
 const char* assetPath = "../common/assets/teapot.obj";
@@ -76,16 +81,19 @@ std::size_t sizeInBytes(std::vector<glm::vec4> arbitraryVector){ //can and shoul
 void fetchObj(const char* objPath){
   std::fstream objFile;
   objFile.open(objPath,std::ios::in);
+
    if (objFile.is_open()){ 
       std::string fileLine;
       while(getline(objFile, fileLine)){
-
+        
         //--------------------------------------
         std::string word ="";
         std::vector<std::string> wordlist;
         for(auto c :fileLine){
           if (c == ' '){
-            wordlist.push_back(word);
+            if(word != "")
+              wordlist.push_back(word);
+
             word="";
           }
           else{
@@ -95,18 +103,22 @@ void fetchObj(const char* objPath){
         }
         wordlist.push_back(word);
         //---------------------------------------
-
         if(fileLine[0]=='v' && fileLine[1]==' '){
           glm::vec3 vertex = glm::vec3(std::stof(wordlist[1]), std::stof(wordlist[2]) , std::stof(wordlist[3]));
           objVertices.push_back( vertex );
-        } 
+        }
+        if(fileLine[0]=='v' && fileLine[1]=='n'){
+          glm::vec3 normal = glm::vec3(std::stof(wordlist[1]), std::stof(wordlist[2]) , std::stof(wordlist[3]));
+          objNormals.push_back( normal );
+        }  
         if(fileLine[0]=='f' && fileLine[1]==' '){
           for(int i =1; i<4; i++){
             int vIdx = std::stoi(wordlist[i])-1;
             vectorOfPoints.push_back(glm::vec4( objVertices[vIdx] ,1.0f) );
-            vectorOfColors.push_back(glm::vec4( (objVertices[vIdx]/4.0f +0.5f)  ,1.0) );
+            vectorOfNormals.push_back(glm::vec4( objNormals[vIdx] ,1.0f) );
+            //vectorOfColors.push_back(glm::vec4( (objVertices[vIdx]/4.0f +0.5f)  ,1.0) );
+            vectorOfColors.push_back(glm::vec4( 0.5,0.2,0.9  ,1.0) );
           }
-
         }
 
       }
@@ -119,14 +131,17 @@ void fetchObj(const char* objPath){
 
 
 void initMatrices(){
-  view_matrix = glm::lookAt(glm::vec3(0.0f, 1.2f, -8.0f), //camerapos
-                            glm::vec3(0.0f, 1.2f, 0.0f),  //targetpos
+
+  view_matrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 200.0f), //camerapos
+                            glm::vec3(0.0f, 0.0f, 0.0f),  //targetpos
                             glm::vec3(0.0f, 1.0f, 0.0f)); //up
+
   float aspect = (float)winSizeX/(float)winSizeY;
-  perspective_matrix =  glm::perspective(glm::radians(45.0f), aspect , 0.1f, 100.0f);
-  glm::mat4 fixAR = glm::mat4();
-  fixAR[1][1] = aspect;
-  ortho_matrix = fixAR * glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 100.0f);
+  perspective_matrix =  glm::perspective(glm::radians(45.0f), aspect , 0.1f, 1000.0f);
+  //glm::mat4 fixAR = glm::mat4();
+  //fixAR[1][1] = aspect;
+  //ortho_matrix = fixAR * glm::ortho(-150.0f, 150.0f, -150.0f, 150.0f, 0.1f, 1000.0f);
+  ortho_matrix =  glm::ortho(-150.0f, 150.0f, -150.0f/aspect, 150.0f/aspect, 0.1f, 1000.0f);
 }
 
 void initBuffersGL(CONTEXT context)
@@ -147,9 +162,10 @@ void initBuffersGL(CONTEXT context)
   glBindBuffer (GL_ARRAY_BUFFER, vbo[0]);
   //Copy the points into the current buffer
   if( context == WIN_TRANSFORM ){
-  glBufferData (GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints) + sizeInBytes(vectorOfColors), NULL, GL_DYNAMIC_DRAW);
+  glBufferData (GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints) + sizeInBytes(vectorOfColors) + sizeInBytes(vectorOfNormals), NULL, GL_DYNAMIC_DRAW);
   glBufferSubData( GL_ARRAY_BUFFER, 0, sizeInBytes(vectorOfPoints), &vectorOfPoints[0][0] );
   glBufferSubData( GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints), sizeInBytes(vectorOfColors), &vectorOfColors[0][0] );
+  glBufferSubData( GL_ARRAY_BUFFER, sizeInBytes(vectorOfPoints) + sizeInBytes(vectorOfColors), sizeInBytes(vectorOfNormals), &vectorOfNormals[0][0] );
   }
 
 
@@ -174,9 +190,16 @@ void initBuffersGL(CONTEXT context)
   if( context == WIN_TRANSFORM )
     glVertexAttribPointer( vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOfPoints)) );
 
+  GLuint vNormal = glGetAttribLocation( shaderProgram, "vNormal" ); 
+  glEnableVertexAttribArray( vNormal );
+  if( context == WIN_TRANSFORM )
+    glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOfPoints) +sizeInBytes(vectorOfColors) ) );
 
   
-  uModelViewMatrix = glGetUniformLocation( shaderProgram, "uModelViewMatrix");
+  uModelViewProjectMatrix = glGetUniformLocation( shaderProgram, "uModelViewProjectMatrix");
+  normalMatrix =  glGetUniformLocation( shaderProgram, "normalMatrix");
+  viewProjectMatrix = glGetUniformLocation( shaderProgram, "viewProjectMatrix");
+  
   //glPointSize(1);
 }
 
@@ -212,9 +235,12 @@ void reloadBuffers(CONTEXT context)
 
 void renderGL(int context)
 {
-  modelviewproject_matrix = projection_matrix*view_matrix*model_matrix;
-
-  glUniformMatrix4fv(uModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelviewproject_matrix));
+  viewProject_matrix = projection_matrix * view_matrix;
+  modelViewProject_matrix = viewProject_matrix *model_matrix;
+  normal_matrix =  glm::transpose (glm::inverse(glm::mat3(modelViewProject_matrix)));
+  glUniformMatrix4fv(viewProjectMatrix, 1, GL_FALSE, glm::value_ptr(viewProject_matrix));
+  glUniformMatrix4fv(uModelViewProjectMatrix, 1, GL_FALSE, glm::value_ptr(modelViewProject_matrix));
+  glUniformMatrix3fv(normalMatrix, 1, GL_FALSE, glm::value_ptr(normal_matrix));
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   // Draw
@@ -281,7 +307,7 @@ void scale(float Sx, float Sy,float Sz){
 void printMat4(const char* name, glm::mat4 matval){
 
   ImGui::Begin(name); 
-  ImGui::Text("\n");
+  //ImGui::Text("\n");
   for(int i =0; i<4; i++){
     for(int j =0; j<4; j++){
       ImGui::Text("%.2f  ",matval[j][i]); ImGui::SameLine();
@@ -299,8 +325,6 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 {
     winSizeX = width;
     winSizeY = height;
-    //fixAR[0][0] = std::max(winSizeX,winSizeY)/float(winSizeX);
-    //fixAR[1][1] = std::max(winSizeX,winSizeY)/float(winSizeY);
     initMatrices();
     
 }
@@ -329,7 +353,7 @@ int main(int argc, char** argv)
 
 
   //! Create a windowed mode window and its OpenGL context
-  window1 = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: Matrix Transformations", NULL, NULL);
+  window1 = glfwCreateWindow(winSizeX, winSizeY, "CS475/CS675 Demo: Modeling Transformations", NULL, NULL);
   if (!window1)
     {
       glfwTerminate();
@@ -445,9 +469,9 @@ int main(int argc, char** argv)
     static float ty = 0.0f;
     static float tz = 0.0f;
 
-    ImGui::SliderFloat("X-Translation", &tx, -10.0f, 10.0f); 
-    ImGui::SliderFloat("Y-Translation", &ty, -10.0f, 10.0f); 
-    ImGui::SliderFloat("Z-Translation", &tz, -10.0f, 10.0f); 
+    ImGui::SliderFloat("X-Translation", &tx, -50.0f, 50.0f); 
+    ImGui::SliderFloat("Y-Translation", &ty, -50.0f, 50.0f); 
+    ImGui::SliderFloat("Z-Translation", &tz, -50.0f, 50.0f); 
     //ImGui::Text("float val is : %f",f);
     translate(tx,ty,tz);
     //ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
@@ -504,10 +528,18 @@ int main(int argc, char** argv)
 
  
     ImGui::End();
-
+    //ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(200, 100));
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
     printMat4("Rotation Matrix",rotation_matrix);
+    ImGui::SetNextWindowSize(ImVec2(200, 100));
+    ImGui::SetNextWindowPos(ImVec2(0, 110));
     printMat4("Translation Matrix",translation_matrix);
+    ImGui::SetNextWindowSize(ImVec2(200, 100));
+    ImGui::SetNextWindowPos(ImVec2(0, 220));
     printMat4("Scaling Matrix",scaling_matrix);
+    ImGui::SetNextWindowSize(ImVec2(200, 100));
+    ImGui::SetNextWindowPos(ImVec2(0, 330));
     printMat4("Model Matrix", model_matrix);
 
 
