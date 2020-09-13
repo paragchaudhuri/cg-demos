@@ -44,8 +44,8 @@ glm::mat4 perspective_matrix;
 int projectionType=1;
 
 glm::mat4 view_matrix;
-glm::mat4 viewProject_matrix;
 glm::mat4 model_matrix;
+glm::mat4 modelView_matrix;
 
 glm::mat3 normal_matrix;
 
@@ -54,9 +54,9 @@ glm::mat4 rotation_matrix;
 glm::mat4 scaling_matrix;
 glm::mat4 translation_matrix;
 
+GLuint uModelViewMatrix;
 GLuint uModelViewProjectMatrix;
-GLuint viewProjectMatrix;
-GLuint normalMatrix;
+GLuint uNormalMatrix;
 
 //-----------------------------------------------------------------
 const char* assetPath = "../common/data/teapot.obj";
@@ -109,6 +109,7 @@ void fetchObj(const char* objPath){
         }
         if(fileLine[0]=='v' && fileLine[1]=='n'){
           glm::vec3 normal = glm::vec3(std::stof(wordlist[1]), std::stof(wordlist[2]) , std::stof(wordlist[3]));
+          normal = glm::normalize(normal);
           objNormals.push_back( normal );
         }  
         if(fileLine[0]=='f' && fileLine[1]==' '){
@@ -117,7 +118,7 @@ void fetchObj(const char* objPath){
             vectorOfPoints.push_back(glm::vec4( objVertices[vIdx] ,1.0f) );
             vectorOfNormals.push_back(glm::vec4( objNormals[vIdx] ,1.0f) );
             //vectorOfColors.push_back(glm::vec4( (objVertices[vIdx]/4.0f +0.5f)  ,1.0) );
-            vectorOfColors.push_back(glm::vec4( 0.5,0.2,0.9  ,1.0) );
+            vectorOfColors.push_back(glm::vec4( 1.0,1.0,1.0,1.0) );
           }
         }
 
@@ -137,7 +138,7 @@ void initMatrices(){
                             glm::vec3(0.0f, 1.0f, 0.0f)); //up
 
   float aspect = (float)winSizeX/(float)winSizeY;
-  perspective_matrix =  glm::perspective(glm::radians(45.0f), aspect , 0.1f, 1000.0f);
+  perspective_matrix =  glm::perspective(glm::radians(60.0f), aspect , 0.1f, 1000.0f);
   //glm::mat4 fixAR = glm::mat4();
   //fixAR[1][1] = aspect;
   //ortho_matrix = fixAR * glm::ortho(-150.0f, 150.0f, -150.0f, 150.0f, 0.1f, 1000.0f);
@@ -196,9 +197,9 @@ void initBuffersGL(CONTEXT context)
     glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeInBytes(vectorOfPoints) +sizeInBytes(vectorOfColors) ) );
 
   
-  uModelViewProjectMatrix = glGetUniformLocation( shaderProgram, "uModelViewProjectMatrix");
-  normalMatrix =  glGetUniformLocation( shaderProgram, "normalMatrix");
-  viewProjectMatrix = glGetUniformLocation( shaderProgram, "viewProjectMatrix");
+  uModelViewProjectMatrix = glGetUniformLocation( shaderProgram, "modelViewProjectMatrix");
+  uNormalMatrix =  glGetUniformLocation( shaderProgram, "normalMatrix");
+  uModelViewMatrix = glGetUniformLocation( shaderProgram, "modelViewMatrix");
   
   //glPointSize(1);
 }
@@ -235,12 +236,12 @@ void reloadBuffers(CONTEXT context)
 
 void renderGL(int context)
 {
-  viewProject_matrix = projection_matrix * view_matrix;
-  modelViewProject_matrix = viewProject_matrix *model_matrix;
-  normal_matrix =  glm::transpose (glm::inverse(glm::mat3(modelViewProject_matrix)));
-  glUniformMatrix4fv(viewProjectMatrix, 1, GL_FALSE, glm::value_ptr(viewProject_matrix));
+  modelView_matrix = view_matrix * model_matrix;
+  modelViewProject_matrix = projection_matrix * modelView_matrix;
+  normal_matrix =  glm::transpose(glm::inverse(glm::mat3(modelView_matrix)));
+  glUniformMatrix4fv(uModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView_matrix));
   glUniformMatrix4fv(uModelViewProjectMatrix, 1, GL_FALSE, glm::value_ptr(modelViewProject_matrix));
-  glUniformMatrix3fv(normalMatrix, 1, GL_FALSE, glm::value_ptr(normal_matrix));
+  glUniformMatrix3fv(uNormalMatrix, 1, GL_FALSE, glm::value_ptr(normal_matrix));
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   // Draw
@@ -248,10 +249,6 @@ void renderGL(int context)
     glDrawArrays(GL_TRIANGLES,0,vectorOfPoints.size()) ;  
   }
 }
-
-
-
-
 
 void rotate(float Rx, float Ry,float Rz){
         //assuming x then y then z
@@ -298,9 +295,9 @@ void translate(float Tx, float Ty,float Tz){
 
 void scale(float Sx, float Sy,float Sz){     
         //Column major!
-        translation_matrix[0][0] = Sx;
-        translation_matrix[1][1] = Sy;
-        translation_matrix[2][2] = Sz;
+        scaling_matrix[0][0] = Sx;
+        scaling_matrix[1][1] = Sy;
+        scaling_matrix[2][2] = Sz;
 }
 
 
@@ -420,7 +417,7 @@ int main(int argc, char** argv)
   //ImGui_ImplOpenGL3_Init(glsl_version);
   //std::cerr<<glGetString (GL_SHADING_LANGUAGE_VERSION)<<std::endl;
   //TODO figure out GLSL version automatically
-  ImGui_ImplOpenGL3_Init("#version 130");
+  ImGui_ImplOpenGL3_Init("#version 330");
 
 
   // Our state
@@ -445,16 +442,12 @@ int main(int argc, char** argv)
       static float rz = 0.0f;
       static int counter = 0;
 
-      ImGui::Begin("Transformation Customization");
+      ImGui::Begin("Modify Transformation");
 
-      ImGui::Text("Rotation Construction:");   
-      
-      //ImGui::Checkbox("Another Window", &show_another_window);
-
-      ImGui::SliderFloat("X-Rotation", &rx, -180.0f, 180.0f); // Edit 1 float using a slider from -180.0f to 180.0f
-      ImGui::SliderFloat("Y-Rotation", &ry, -180.0f, 180.0f); // Edit 1 float using a slider from -180.0f to 180.0f
-      ImGui::SliderFloat("Z-Rotation", &rz, -180.0f, 180.0f); // Edit 1 float using a slider from -180.0f to 180.0f
-      //ImGui::Text("float val is : %f",f);
+      ImGui::Text("Rotation:");   
+      ImGui::SliderFloat("Rx", &rx, -180.0f, 180.0f); // Edit 1 float using a slider from -180.0f to 180.0f
+      ImGui::SliderFloat("Ry", &ry, -180.0f, 180.0f); // Edit 1 float using a slider from -180.0f to 180.0f
+      ImGui::SliderFloat("Rz", &rz, -180.0f, 180.0f); // Edit 1 float using a slider from -180.0f to 180.0f
       rotate(rx,ry,rz);
       //ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
       if (ImGui::Button("Reset Rotaion"))   {// Buttons return true when clicked (most widgets return true when edited/activated)
@@ -463,83 +456,80 @@ int main(int argc, char** argv)
         rz=0.0f;
       }                    
         
+      ImGui::Dummy(ImVec2(0.0f, 20.0f));
+      ImGui::Text("Translation:");
+      static float tx = 0.0f;
+      static float ty = 0.0f;
+      static float tz = 0.0f;
 
-    ImGui::Text("Translation Construction:");
-    static float tx = 0.0f;
-    static float ty = 0.0f;
-    static float tz = 0.0f;
+      ImGui::SliderFloat("Tx", &tx, -50.0f, 50.0f); 
+      ImGui::SliderFloat("Ty", &ty, -50.0f, 50.0f); 
+      ImGui::SliderFloat("Tz", &tz, -50.0f, 50.0f); 
+      translate(tx,ty,tz);
+      if (ImGui::Button("Reset Translation"))   {// Buttons return true when clicked (most widgets return true when edited/activated)
+        tx=0.0f;
+        ty=0.0f;
+        tz=0.0f;
+      }     
 
-    ImGui::SliderFloat("X-Translation", &tx, -50.0f, 50.0f); 
-    ImGui::SliderFloat("Y-Translation", &ty, -50.0f, 50.0f); 
-    ImGui::SliderFloat("Z-Translation", &tz, -50.0f, 50.0f); 
-    //ImGui::Text("float val is : %f",f);
-    translate(tx,ty,tz);
-    //ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-    if (ImGui::Button("Reset Translation"))   {// Buttons return true when clicked (most widgets return true when edited/activated)
-      tx=0.0f;
-      ty=0.0f;
-      tz=0.0f;
-    }     
+      ImGui::Dummy(ImVec2(0.0f, 20.0f));
+      ImGui::Text("Scaling:");
+      static float sx = 1.0f;
+      static float sy = 1.0f;
+      static float sz = 1.0f;
 
-    ImGui::Text("Scaling Construction:");
-    static float sx = 1.0f;
-    static float sy = 1.0f;
-    static float sz = 1.0f;
+      ImGui::SliderFloat("Sx", &sx, 0.2f, 2.0f); 
+      ImGui::SliderFloat("Sy", &sy, 0.2f, 2.0f); 
+      ImGui::SliderFloat("Sz", &sz, 0.2f, 2.0f); 
+      scale(sx,sy,sz);
+      if (ImGui::Button("Reset Scaling"))   {// Buttons return true when clicked (most widgets return true when edited/activated)
+        sx=1.0f;
+        sy=1.0f;
+        sz=1.0f;
+      }
 
-    ImGui::SliderFloat("X-Scaling", &sx, 0.2f, 2.0f); 
-    ImGui::SliderFloat("Y-Scaling", &sy, 0.2f, 2.0f); 
-    ImGui::SliderFloat("Z-Scaling", &sz, 0.2f, 2.0f); 
-    //ImGui::Text("float val is : %f",f);
-    scale(sx,sy,sz);
-    //ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-    if (ImGui::Button("Reset Scaling"))   {// Buttons return true when clicked (most widgets return true when edited/activated)
-      sx=1.0f;
-      sy=1.0f;
-      sz=1.0f;
-    }
+      ImGui::Dummy(ImVec2(0.0f, 40.0f));
+      ImGui::Text("Transformation Order:");
+      static int tord = 0; //transformOrder
+      ImGui::RadioButton("T * R * S", &tord, 0); ImGui::SameLine();
+      ImGui::RadioButton("R * T * S", &tord, 1); //ImGui::SameLine();
+      ImGui::RadioButton("S * T * R", &tord, 2); ImGui::SameLine();
+      ImGui::RadioButton("S * R * T", &tord, 3);
+      switch(tord){
+        case 0: model_matrix = translation_matrix*rotation_matrix*scaling_matrix; //TRS
+        break;
+        case 1: model_matrix = rotation_matrix*translation_matrix*scaling_matrix; //RTS
+        break;
+        case 2: model_matrix = scaling_matrix*translation_matrix*rotation_matrix; //STR
+        break;
+        case 3: model_matrix = scaling_matrix*rotation_matrix*translation_matrix;  //SRT
 
-    ImGui::Text("Transformation Order:");
-    static int tord = 0; //transformOrder
-    ImGui::RadioButton("S then R then T", &tord, 0); ImGui::SameLine();
-    ImGui::RadioButton("S then T then R", &tord, 1); //ImGui::SameLine();
-    ImGui::RadioButton("R then T then S", &tord, 2); ImGui::SameLine();
-    ImGui::RadioButton("T then R then S", &tord, 3);
-    switch(tord){
-      case 0: model_matrix = translation_matrix*rotation_matrix*scaling_matrix; //SRT
-      break;
-      case 1: model_matrix = rotation_matrix*translation_matrix*scaling_matrix; //STR
-      break;
-      case 2: model_matrix = scaling_matrix*translation_matrix*rotation_matrix; //RTS
-      break;
-      case 3: model_matrix = scaling_matrix*rotation_matrix*translation_matrix;  //TRS
+      }
 
-    }
-
+    ImGui::Dummy(ImVec2(0.0f, 40.0f));
     ImGui::Text("Projection:");
     //static int projectType = 1;
-    ImGui::RadioButton("Orthographic", &projectionType, 0); ImGui::SameLine();
+    ImGui::RadioButton("Orthographic", &projectionType, 0);
     ImGui::RadioButton("Perspective", &projectionType, 1);
     switch(projectionType){
       case 0: projection_matrix = ortho_matrix;
       break;
-      case 1: projection_matrix = perspective_matrix; //STR
+      case 1: projection_matrix = perspective_matrix; //TRS
 
     }
-
- 
     ImGui::End();
-    //ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(200, 100));
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
+
+    ImGui::SetNextWindowSize(ImVec2(250, 100));
+    ImGui::SetNextWindowPos(ImVec2(0, 30));
     printMat4("Rotation Matrix",rotation_matrix);
-    ImGui::SetNextWindowSize(ImVec2(200, 100));
-    ImGui::SetNextWindowPos(ImVec2(0, 110));
+    ImGui::SetNextWindowSize(ImVec2(250, 100));
+    ImGui::SetNextWindowPos(ImVec2(0, 140));
     printMat4("Translation Matrix",translation_matrix);
-    ImGui::SetNextWindowSize(ImVec2(200, 100));
-    ImGui::SetNextWindowPos(ImVec2(0, 220));
+    ImGui::SetNextWindowSize(ImVec2(250, 100));
+    ImGui::SetNextWindowPos(ImVec2(0, 250));
     printMat4("Scaling Matrix",scaling_matrix);
-    ImGui::SetNextWindowSize(ImVec2(200, 100));
-    ImGui::SetNextWindowPos(ImVec2(0, 330));
+    ImGui::SetNextWindowSize(ImVec2(250, 100));
+    ImGui::SetNextWindowPos(ImVec2(0, 360));
     printMat4("Model Matrix", model_matrix);
 
 
