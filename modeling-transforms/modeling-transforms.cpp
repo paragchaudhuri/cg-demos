@@ -59,7 +59,7 @@ GLuint viewProjectMatrix;
 GLuint normalMatrix;
 
 //-----------------------------------------------------------------
-const char* assetPath = "../common/assets/teapot.obj";
+const char* assetPath = "../common/data/teapot.obj";
 //-----------------------------------------------------------------
 
 
